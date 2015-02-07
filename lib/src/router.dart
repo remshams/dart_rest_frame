@@ -98,7 +98,6 @@ class Router {
     return null;
   }
 
-  // TODO: Update route matching
   bool _isPathMatching(List<String> base, List<String> compare) {
     if (base.length != compare.length) {
       return false;
