@@ -21,7 +21,7 @@ void defineTests() {
       Router router = new Router("/stocks");
       Router bondRouter = router.child("/bonds");
       bool called = false;
-      Function toCallFunction = (HttpRequest request, String id) {
+      Function toCallFunction = (HttpRequest request, String id, String name) {
         called = true;
       };
       Function notToCallFunction = (HttpRequest request) {
@@ -30,7 +30,7 @@ void defineTests() {
       router.get("/bla", notToCallFunction);
       router.get("/{id}/test", notToCallFunction);
       bondRouter.get("/test{?id}{?name}", toCallFunction);
-      HttpRequest request = new HttpRequestMock(HttpMethod.get.toString(), Uri.parse("/stocks/bonds/test?id=test"));
+      HttpRequest request = new HttpRequestMock(HttpMethod.get.toString(), Uri.parse("/stocks/bonds/test?id=12"));
       router.route(request);
       assert(called);
     });

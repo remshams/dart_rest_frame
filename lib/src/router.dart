@@ -48,22 +48,27 @@ class Router {
     return new RestPath(path);
   }
 
+  /**
+   * Get route for request
+   */
   Route registeredRoute(HttpMethod method, Uri requestUri) {
     List<String> routeElements = _path.pathSegments;
     List<String> pathElements = requestUri.pathSegments;
+    // Number of elements in request must match router path
     for (int i = 0; i < routeElements.length; i++) {
       if (pathElements[i] == null || routeElements[i] != pathElements[i]) {
         return null;
       }
     }
-    List<String> pathElementsWithoutRootPath = pathElements.sublist(routeElements.length);
     Route matchingRoute;
+    // Check childs first
     for (int i = 0; i < _childs.length; i++) {
       matchingRoute = _childs[i].registeredRoute(method, requestUri);
       if (matchingRoute != null) {
         return matchingRoute;
       }
     }
+    // Check routes of methods
     switch (method) {
       case HttpMethod.get:
         matchingRoute = _retrieveRouteRegisteredForHttpMethod(_getRoutes, requestUri);
@@ -83,6 +88,9 @@ class Router {
     return matchingRoute;
   }
 
+  /**
+   * Route request
+   */
   void route(HttpRequest request) {
     HttpMethod method = HttpMethod.fromString(request.method);
     Route route = registeredRoute(method, request.uri);
@@ -90,6 +98,9 @@ class Router {
     _invokeCallBack(request, route, params);
   }
 
+  /**
+   * Retrieve route for request and request method
+   */
   Route _retrieveRouteRegisteredForHttpMethod(List<Route> routes, Uri requestUri) {
     for (int i = 0; i < routes.length; i++) {
       if(_isPathMatching(routes[i].path, requestUri)) {
@@ -99,6 +110,9 @@ class Router {
     return null;
   }
 
+  /**
+   * Checks if paths are matching
+   */
   bool _isPathMatching(RestPath basePath, Uri comparePath) {
     List<String> base = basePath.pathSegments;
     List<String> compare = comparePath.pathSegments;
@@ -108,6 +122,7 @@ class Router {
     for (int i = 0; i < base.length; i ++) {
       if (compare[i].isEmpty) {
         return false;
+      // If path elements are not equal check if it is a path parameter
       } else if (compare[i] != base[i]) {
         if (basePath.parameters[i] == null) {
           return false;
@@ -117,6 +132,10 @@ class Router {
     return true;
   }
 
+  /**
+   * Extracts the parameters from a request
+   * Includes query parameters and path parameters
+   */
   Map<String, dynamic> _extractParams(Route route, Uri requestUri) {
     Map<String,String> params = new Map<String, String>();
     params.addAll(requestUri.queryParameters);
@@ -124,12 +143,15 @@ class Router {
       List<String> pathSegments = requestUri.pathSegments;
       route.path.parameters.forEach((key, value) {
         Set<String> uriParameters = value;
+        // More specified parameters than length of segment --> does not fit --> skip
         if (uriParameters.length > pathSegments[key].length) {
           return;
         }
         int numberOfSymbols = (pathSegments[key].length / uriParameters.length).floor();
         int counter = 0;
+        // Get a value for each parameter
         uriParameters.forEach((paramName) {
+          // In case rest is smaller than next chunk assign the rest
           if (counter + numberOfSymbols > pathSegments[key].length) {
             params[paramName] = pathSegments[key].substring(counter, counter + pathSegments[key].length);
           } else {
@@ -142,42 +164,32 @@ class Router {
     return params;
   }
 
+  /**
+   * Invokes the callback method
+   */
   void _invokeCallBack(HttpRequest request, Route route, Map<String, String> parameters) {
-    ClosureMirror functionInstance = reflect(route.callBack);
+    ClosureMirror closure = reflect(route.callBack);
     List<dynamic> invokeParameters = new List<dynamic>();
     invokeParameters.add(request);
-    MethodMirror func = functionInstance.function;
+    MethodMirror func = closure.function;
+    // TODO: Does not work in case function parameters are not typed
     for (ParameterMirror currentParameter in func.parameters) {
-      if (!currentParameter.type.isSubtypeOf(reflectType(HttpRequest))) {
+      // Special handling for request object
+      if (currentParameter.type.isSubtypeOf(reflectType(HttpRequest))) {
+        invokeParameters.add(request);
+      } else {
         invokeParameters.add(parameters[MirrorSystem.getName(currentParameter.simpleName)]);
       }
-
     }
-    functionInstance.apply(invokeParameters);
+    closure.apply(invokeParameters);
   }
 }
 
 class Route {
   RestPath path;
   Function callBack;
-  Set<String> parameters;
-  String functionName;
 
-  Route(this.path, this.callBack) {
-    parameters = _extractCallBackParameters(callBack);
-  }
-
-  Set<String> _extractCallBackParameters(Function callBack) {
-    if (callBack == null) {
-      return null;
-    }
-    Set<String> parameters = new Set<String>();
-    MethodMirror func = reflect(callBack).function;
-    for (ParameterMirror currentParameter in func.parameters) {
-      parameters.add(MirrorSystem.getName(currentParameter.simpleName));
-    }
-    return parameters;
-  }
+  Route(this.path, this.callBack);
 }
 
 class RestPath {
@@ -195,11 +207,17 @@ class RestPath {
   }
 
   // TODO: Optimization possible
+  /**
+   * Extracts parameters from a route elements
+   * Parameters only supported at the end of the path
+   */
   void _extractParameters(List<String> pathElements) {
     for (int i = 0; i < pathElements.length; i++) {
       if (pathElements[i].contains("{")) {
         List<String> allElements = pathElements[i].split(new RegExp("\[{.\}]")).where((s) => s.isNotEmpty).toList();
+        // In case of query parameters some string needs to be ajusted
         if (pathElements[i].contains("?")) {
+          // Replace element with queryParameters by element (e.g.../test{?id}{?name} -> test)
           pathElements[i] = allElements[0];
           for (String currentElement in allElements.sublist(1)) {
             queryParameters.add(currentElement.replaceAll("?", ""));
