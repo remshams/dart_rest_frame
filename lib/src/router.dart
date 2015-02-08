@@ -3,6 +3,7 @@ library restframework.router;
 import "package:restFramework/src/enums.dart";
 import "package:restFramework/src/utils/utils.dart";
 import "dart:io";
+import 'dart:mirrors';
 
 class Router {
 
@@ -86,7 +87,7 @@ class Router {
     HttpMethod method = HttpMethod.fromString(request.method);
     Route route = registeredRoute(method, request.uri);
     Map<String, String> params = _extractParams(route, request.uri);
-    route.callBack(request);
+    _invokeCallBack(request, route, params);
   }
 
   Route _retrieveRouteRegisteredForHttpMethod(List<Route> routes, Uri requestUri) {
@@ -140,13 +141,43 @@ class Router {
     }
     return params;
   }
+
+  void _invokeCallBack(HttpRequest request, Route route, Map<String, String> parameters) {
+    ClosureMirror functionInstance = reflect(route.callBack);
+    List<dynamic> invokeParameters = new List<dynamic>();
+    invokeParameters.add(request);
+    MethodMirror func = functionInstance.function;
+    for (ParameterMirror currentParameter in func.parameters) {
+      if (!currentParameter.type.isSubtypeOf(reflectType(HttpRequest))) {
+        invokeParameters.add(parameters[MirrorSystem.getName(currentParameter.simpleName)]);
+      }
+
+    }
+    functionInstance.apply(invokeParameters);
+  }
 }
 
 class Route {
   RestPath path;
   Function callBack;
+  Set<String> parameters;
+  String functionName;
 
-  Route(this.path, this.callBack);
+  Route(this.path, this.callBack) {
+    parameters = _extractCallBackParameters(callBack);
+  }
+
+  Set<String> _extractCallBackParameters(Function callBack) {
+    if (callBack == null) {
+      return null;
+    }
+    Set<String> parameters = new Set<String>();
+    MethodMirror func = reflect(callBack).function;
+    for (ParameterMirror currentParameter in func.parameters) {
+      parameters.add(MirrorSystem.getName(currentParameter.simpleName));
+    }
+    return parameters;
+  }
 }
 
 class RestPath {

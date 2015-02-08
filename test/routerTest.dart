@@ -11,6 +11,8 @@ class HttpRequestMock extends Mock implements HttpRequest {
   HttpRequestMock(this.method, this.uri);
 
   noSuchMethod(i) => super.noSuchMethod(i);
+
+
 }
 
 void defineTests() {
@@ -19,7 +21,7 @@ void defineTests() {
       Router router = new Router("/stocks");
       Router bondRouter = router.child("/bonds");
       bool called = false;
-      Function toCallFunction = (HttpRequest request) {
+      Function toCallFunction = (HttpRequest request, String id) {
         called = true;
       };
       Function notToCallFunction = (HttpRequest request) {
@@ -36,10 +38,10 @@ void defineTests() {
       Router router = new Router("/stocks");
       Router bondRouter = router.child("/bonds");
       bool called = false;
-      Function getFunction = (HttpRequest request) {
+      Function getFunction = (HttpRequest request, String id) {
         called = true;
       };
-      Function notToCallFunction = (HttpRequest request) {
+      Function notToCallFunction = (HttpRequest request, String id) {
         called = false;
       };
       router.get("/bla", notToCallFunction);
