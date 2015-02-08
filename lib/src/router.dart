@@ -85,20 +85,22 @@ class Router {
   void route(HttpRequest request) {
     HttpMethod method = HttpMethod.fromString(request.method);
     Route route = registeredRoute(method, request.uri);
+    Map<String, String> params = _extractParams(route, request.uri);
     route.callBack(request);
   }
 
   Route _retrieveRouteRegisteredForHttpMethod(List<Route> routes, Uri requestUri) {
-    List<String> pathElements = requestUri.pathSegments;
     for (int i = 0; i < routes.length; i++) {
-      if(_isPathMatching(routes[i].path.pathSegments, pathElements)) {
+      if(_isPathMatching(routes[i].path, requestUri)) {
         return routes[i];
       }
     }
     return null;
   }
 
-  bool _isPathMatching(List<String> base, List<String> compare) {
+  bool _isPathMatching(RestPath basePath, Uri comparePath) {
+    List<String> base = basePath.pathSegments;
+    List<String> compare = comparePath.pathSegments;
     if (base.length != compare.length) {
       return false;
     }
@@ -106,16 +108,37 @@ class Router {
       if (compare[i].isEmpty) {
         return false;
       } else if (compare[i] != base[i]) {
-        if (!base[i].startsWith("{")) {
-          return false;
-        }
-        List<String> dynamicElements = base[i].split(new RegExp("\[{.\}]")).where((s) => s.isNotEmpty).toList();
-        if (dynamicElements.length > compare[i].length) {
+        if (basePath.parameters[i] == null) {
           return false;
         }
       }
     }
     return true;
+  }
+
+  Map<String, dynamic> _extractParams(Route route, Uri requestUri) {
+    Map<String,String> params = new Map<String, String>();
+    params.addAll(requestUri.queryParameters);
+    if (route.path.parameters != null) {
+      List<String> pathSegments = requestUri.pathSegments;
+      route.path.parameters.forEach((key, value) {
+        Set<String> uriParameters = value;
+        if (uriParameters.length > pathSegments[key].length) {
+          return;
+        }
+        int numberOfSymbols = (pathSegments[key].length / uriParameters.length).floor();
+        int counter = 0;
+        uriParameters.forEach((paramName) {
+          if (counter + numberOfSymbols > pathSegments[key].length) {
+            params[paramName] = pathSegments[key].substring(counter, counter + pathSegments[key].length);
+          } else {
+            params[paramName] = pathSegments[key].substring(counter, counter + numberOfSymbols);
+          }
+          counter += numberOfSymbols;
+        });
+      });
+    }
+    return params;
   }
 }
 
@@ -140,11 +163,13 @@ class RestPath {
 
   }
 
+  // TODO: Optimization possible
   void _extractParameters(List<String> pathElements) {
     for (int i = 0; i < pathElements.length; i++) {
       if (pathElements[i].contains("{")) {
         List<String> allElements = pathElements[i].split(new RegExp("\[{.\}]")).where((s) => s.isNotEmpty).toList();
         if (pathElements[i].contains("?")) {
+          pathElements[i] = allElements[0];
           for (String currentElement in allElements.sublist(1)) {
             queryParameters.add(currentElement.replaceAll("?", ""));
           }

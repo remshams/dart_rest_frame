@@ -19,13 +19,33 @@ void defineTests() {
       Router router = new Router("/stocks");
       Router bondRouter = router.child("/bonds");
       bool called = false;
+      Function toCallFunction = (HttpRequest request) {
+        called = true;
+      };
+      Function notToCallFunction = (HttpRequest request) {
+        called = false;
+      };
+      router.get("/bla", notToCallFunction);
+      router.get("/{id}/test", notToCallFunction);
+      bondRouter.get("/test{?id}{?name}", toCallFunction);
+      HttpRequest request = new HttpRequestMock(HttpMethod.get.toString(), Uri.parse("/stocks/bonds/test?id=test"));
+      router.route(request);
+      assert(called);
+    });
+    test("getRouteWithParameters", () {
+      Router router = new Router("/stocks");
+      Router bondRouter = router.child("/bonds");
+      bool called = false;
       Function getFunction = (HttpRequest request) {
         called = true;
       };
-      router.get("/bla", getFunction);
+      Function notToCallFunction = (HttpRequest request) {
+        called = false;
+      };
+      router.get("/bla", notToCallFunction);
       router.get("/{id}/test", getFunction);
-      bondRouter.get("/test{?id}", getFunction);
-      HttpRequest request = new HttpRequestMock(HttpMethod.get.toString(), Uri.parse("/stocks/bonds/test"));
+      bondRouter.get("/test{?id}", notToCallFunction);
+      HttpRequest request = new HttpRequestMock(HttpMethod.get.toString(), Uri.parse("/stocks/12/test"));
       router.route(request);
       assert(called);
     });
