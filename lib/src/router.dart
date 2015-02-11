@@ -4,6 +4,7 @@ import "package:restFramework/src/enums.dart";
 import "package:restFramework/src/utils/utils.dart";
 import "dart:io";
 import 'dart:mirrors';
+import "dart:convert";
 
 class Router {
 
@@ -170,7 +171,6 @@ class Router {
   void _invokeCallBack(HttpRequest request, Route route, Map<String, String> parameters) {
     ClosureMirror closure = reflect(route.callBack);
     List<dynamic> invokeParameters = new List<dynamic>();
-    invokeParameters.add(request);
     MethodMirror func = closure.function;
     // TODO: Does not work in case function parameters are not typed
     for (ParameterMirror currentParameter in func.parameters) {
@@ -181,7 +181,17 @@ class Router {
         invokeParameters.add(parameters[MirrorSystem.getName(currentParameter.simpleName)]);
       }
     }
-    closure.apply(invokeParameters);
+    InstanceMirror closureReturn = closure.apply(invokeParameters);
+    _processResponse(request, closureReturn);
+  }
+
+  void _processResponse(HttpRequest request, InstanceMirror invokeResult) {
+    String json = JSON.encode(invokeResult.reflectee);
+    HttpResponse response = request.response;
+    response.write(json);
+    response.headers.add("Content-Type", "application/json");
+    response.statusCode = HttpStatus.OK;
+    response.close();
   }
 }
 
