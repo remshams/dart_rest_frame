@@ -93,8 +93,14 @@ class Router {
    * Route request
    */
   void route(HttpRequest request) {
+    // TODO StatusCodes and Routing refactoring
     HttpMethod method = HttpMethod.fromString(request.method);
     Route route = registeredRoute(method, request.uri);
+    if (route == null) {
+      request.response.statusCode = HttpStatus.NOT_FOUND;
+      request.response.close();
+      return;
+    }
     Map<String, String> params = _extractParams(route, request.uri);
     _invokeCallBack(request, route, params);
   }
@@ -151,15 +157,19 @@ class Router {
         int numberOfSymbols = (pathSegments[key].length / uriParameters.length).floor();
         int counter = 0;
         // Get a value for each parameter
-        uriParameters.forEach((paramName) {
-          // In case rest is smaller than next chunk assign the rest
-          if (counter + numberOfSymbols > pathSegments[key].length) {
-            params[paramName] = pathSegments[key].substring(counter, counter + pathSegments[key].length);
+        Iterator it = uriParameters.iterator;
+        bool isNextParam = it.moveNext();
+        while (isNextParam) {
+          String currentElement = it.current;
+          isNextParam = it.moveNext();
+          // In case Param is last in set, assign all remaining values
+          if (isNextParam) {
+            params[currentElement] = pathSegments[key].substring(counter, counter + numberOfSymbols);
           } else {
-            params[paramName] = pathSegments[key].substring(counter, counter + numberOfSymbols);
+            params[currentElement] = pathSegments[key].substring(counter, pathSegments[key].length);
           }
           counter += numberOfSymbols;
-        });
+        }
       });
     }
     return params;
@@ -187,11 +197,11 @@ class Router {
 
   void _processResponse(HttpRequest request, InstanceMirror invokeResult) {
     String json = JSON.encode(invokeResult.reflectee);
-    HttpResponse response = request.response;
-    response.write(json);
-    response.headers.add("Content-Type", "application/json");
-    response.statusCode = HttpStatus.OK;
-    response.close();
+    //HttpResponse response = request.response;
+    request.response.write(json);
+    //request.response.headers.CONTENT_TYPE = ContentType.JSON;
+    //request.response.statusCode = HttpStatus.OK;
+    request.response.close();
   }
 }
 
