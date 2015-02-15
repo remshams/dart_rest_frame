@@ -57,7 +57,7 @@ class Router {
     List<String> pathElements = requestUri.pathSegments;
     // Number of elements in request must match router path
     for (int i = 0; i < routeElements.length; i++) {
-      if (pathElements[i] == null || routeElements[i] != pathElements[i]) {
+      if (routeElements[i].isNotEmpty && pathElements[i] == null || routeElements[i] != pathElements[i]) {
         return null;
       }
     }
@@ -101,7 +101,7 @@ class Router {
       request.response.close();
       return;
     }
-    Map<String, String> params = _extractParams(route, request.uri);
+    Map<String, dynamic> params = _extractParams(route, request.uri);
     _invokeCallBack(request, route, params);
   }
 
@@ -188,11 +188,29 @@ class Router {
       if (currentParameter.type.isSubtypeOf(reflectType(HttpRequest))) {
         invokeParameters.add(request);
       } else {
-        invokeParameters.add(parameters[MirrorSystem.getName(currentParameter.simpleName)]);
+        dynamic paramValue = parameters[MirrorSystem.getName(currentParameter.simpleName)];
+        invokeParameters.add(_parseTypeFromString(currentParameter, paramValue));
       }
     }
     InstanceMirror closureReturn = closure.apply(invokeParameters);
     _processResponse(request, closureReturn);
+  }
+
+  /**
+   * Parses a string to the type reflected by [mirror]
+   */
+  dynamic _parseTypeFromString(ParameterMirror mirror, String value) {
+    var result = value;
+    if (value != null && !mirror.type.isSubtypeOf(reflectType(String))) {
+      // Special handling of bool
+      if (mirror.type.isSubtypeOf(reflectType(bool))) {
+        result = value.toLowerCase() == "true";
+      } else {
+        ClassMirror paramTypeMirror = mirror.type;
+        result = paramTypeMirror.invoke(#parse, [value]).reflectee;
+      }
+    }
+    return result;
   }
 
   void _processResponse(HttpRequest request, InstanceMirror invokeResult) {
@@ -237,8 +255,21 @@ class RestPath {
         List<String> allElements = pathElements[i].split(new RegExp("\[{.\}]")).where((s) => s.isNotEmpty).toList();
         // In case of query parameters some string needs to be ajusted
         if (pathElements[i].contains("?")) {
+          String oldPathElement = pathElements[i];
           // Replace element with queryParameters by element (e.g.../test{?id}{?name} -> test)
-          pathElements[i] = allElements[0];
+          // Case /{?id} --> last element not a path element
+          if (allElements[0].contains("?")) {
+            pathElements.removeAt(i);
+          } else {
+            // Case /{id}{?name}
+            if (oldPathElement[0] == "{") {
+              pathElements[i] = oldPathElement;
+              parameters[i] = new Set.from([allElements[0]]);
+            // Case ../test{?id}
+            } else {
+              pathElements[i] = allElements[0];
+            }
+          }
           for (String currentElement in allElements.sublist(1)) {
             queryParameters.add(currentElement.replaceAll("?", ""));
           }
