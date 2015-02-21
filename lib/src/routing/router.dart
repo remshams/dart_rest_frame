@@ -5,6 +5,7 @@ import "package:restFramework/src/routing/route.dart";
 import "dart:io";
 import 'dart:mirrors';
 import "dart:convert";
+import "package:restFramework/src/routing/annotation.dart";
 
 class Router {
 
@@ -115,7 +116,9 @@ class Router {
     }
     Map<String, dynamic> params = _extractParams(route, request.uri);
     request.response.statusCode = HttpStatus.OK;
-    _invokeCallBack(request, route, params);
+    UTF8.decodeStream(request).then((body) {
+      _invokeCallBack(request, route, params, body);
+    });
 
   }
 
@@ -192,22 +195,45 @@ class Router {
   /**
    * Invokes the callback method
    */
-  void _invokeCallBack(HttpRequest request, Route route, Map<String, String> parameters) {
+  void _invokeCallBack(HttpRequest request, Route route, Map<String, String> parameters, String body) {
     ClosureMirror closure = reflect(route.callBack);
     List<dynamic> invokeParameters = new List<dynamic>();
     MethodMirror func = closure.function;
     // TODO: Does not work in case function parameters are not typed
     for (ParameterMirror currentParameter in func.parameters) {
-      // Special handling for request object
-      if (currentParameter.type.isSubtypeOf(reflectType(HttpRequest))) {
-        invokeParameters.add(request);
+      Set<TypeMirror> typeAnnotations = _retrieveRestFrameworkAnnotations(currentParameter);
+      if (typeAnnotations.isNotEmpty) {
+        _processAnnotations(currentParameter.type, typeAnnotations, invokeParameters, body);
       } else {
-        dynamic paramValue = parameters[MirrorSystem.getName(currentParameter.simpleName)];
-        invokeParameters.add(_parseTypeFromString(currentParameter, paramValue));
+        // Special handling for request object
+        if (currentParameter.type.isSubtypeOf(reflectType(HttpRequest))) {
+          invokeParameters.add(request);
+        } else {
+          dynamic paramValue = parameters[MirrorSystem.getName(currentParameter.simpleName)];
+          invokeParameters.add(_parseTypeFromString(currentParameter, paramValue));
+        }
       }
     }
     InstanceMirror closureReturn = closure.apply(invokeParameters);
     _processResponse(request, closureReturn);
+  }
+
+  Set<TypeMirror> _retrieveRestFrameworkAnnotations(ParameterMirror parameterMirror) {
+    Set<TypeMirror> annotationTypes = new Set<TypeMirror>();
+    for (InstanceMirror currentAnnotaion in parameterMirror.metadata) {
+      if (currentAnnotaion.type == reflectType(RequestBody)) {
+        annotationTypes.add(currentAnnotaion.type);
+      }
+    }
+    return annotationTypes;
+  }
+
+  void _processAnnotations(ClassMirror parameterType, Set<TypeMirror> annotations, List<dynamic> invokeParameters, String requestBody) {
+    for (TypeMirror currentAnnotation in annotations) {
+      if (currentAnnotation == reflectType(RequestBody)) {
+        invokeParameters.add(parameterType.newInstance(#fromJson, [JSON.decode(requestBody)]).reflectee);
+      }
+    }
   }
 
   /**
