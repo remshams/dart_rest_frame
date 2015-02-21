@@ -1,7 +1,7 @@
 library restframework.router;
 
-import "package:restFramework/src/enums.dart";
-import "package:restFramework/src/utils/utils.dart";
+import "package:restFramework/src/utils/enums.dart";
+import "package:restFramework/src/routing/route.dart";
 import "dart:io";
 import 'dart:mirrors';
 import "dart:convert";
@@ -52,7 +52,7 @@ class Router {
   /**
    * Get route for request
    */
-  Route registeredRoute(HttpMethod method, Uri requestUri) {
+  Route _registeredRoute(HttpMethod method, Uri requestUri) {
     List<String> routeElements = _path.pathSegments;
     List<String> pathElements = requestUri.pathSegments;
     // Number of elements in request must match router path
@@ -64,7 +64,7 @@ class Router {
     Route matchingRoute;
     // Check childs first
     for (int i = 0; i < _childs.length; i++) {
-      matchingRoute = _childs[i].registeredRoute(method, requestUri);
+      matchingRoute = _childs[i]._registeredRoute(method, requestUri);
       if (matchingRoute != null) {
         return matchingRoute;
       }
@@ -93,16 +93,30 @@ class Router {
    * Route request
    */
   void route(HttpRequest request) {
-    // TODO StatusCodes and Routing refactoring
-    HttpMethod method = HttpMethod.fromString(request.method);
-    Route route = registeredRoute(method, request.uri);
+    try {
+      HttpMethod method = HttpMethod.fromString(request.method);
+      Route route = _registeredRoute(method, request.uri);
+      _validateRequest(request, route);
+    } catch (e) {
+      request.response.statusCode = HttpStatus.INTERNAL_SERVER_ERROR;
+      request.response.close();
+    }
+  }
+
+  /**
+   * Checks if request is valid
+   * In case it is request is further processed
+   */
+  void _validateRequest(HttpRequest request, Route route) {
     if (route == null) {
       request.response.statusCode = HttpStatus.NOT_FOUND;
       request.response.close();
       return;
     }
     Map<String, dynamic> params = _extractParams(route, request.uri);
+    request.response.statusCode = HttpStatus.OK;
     _invokeCallBack(request, route, params);
+
   }
 
   /**
@@ -215,68 +229,9 @@ class Router {
 
   void _processResponse(HttpRequest request, InstanceMirror invokeResult) {
     String json = JSON.encode(invokeResult.reflectee);
-    //HttpResponse response = request.response;
     request.response.write(json);
-    //request.response.headers.CONTENT_TYPE = ContentType.JSON;
-    //request.response.statusCode = HttpStatus.OK;
     request.response.close();
   }
 }
 
-class Route {
-  RestPath path;
-  Function callBack;
 
-  Route(this.path, this.callBack);
-}
-
-class RestPath {
-  String path;
-  List<String> pathSegments;
-  Map<int, Set<String>> parameters;
-  Set<String> queryParameters;
-
-  RestPath(this.path) {
-    parameters = new Map<int, Set<String>>();
-    queryParameters = new Set<String>();
-    pathSegments = Utils.removeEmptyElementsFromList(path.split("/"));
-    _extractParameters(pathSegments);
-
-  }
-
-  // TODO: Optimization possible
-  /**
-   * Extracts parameters from a route elements
-   * Parameters only supported at the end of the path
-   */
-  void _extractParameters(List<String> pathElements) {
-    for (int i = 0; i < pathElements.length; i++) {
-      if (pathElements[i].contains("{")) {
-        List<String> allElements = pathElements[i].split(new RegExp("\[{.\}]")).where((s) => s.isNotEmpty).toList();
-        // In case of query parameters some string needs to be ajusted
-        if (pathElements[i].contains("?")) {
-          String oldPathElement = pathElements[i];
-          // Replace element with queryParameters by element (e.g.../test{?id}{?name} -> test)
-          // Case /{?id} --> last element not a path element
-          if (allElements[0].contains("?")) {
-            pathElements.removeAt(i);
-          } else {
-            // Case /{id}{?name}
-            if (oldPathElement[0] == "{") {
-              pathElements[i] = oldPathElement;
-              parameters[i] = new Set.from([allElements[0]]);
-            // Case ../test{?id}
-            } else {
-              pathElements[i] = allElements[0];
-            }
-          }
-          for (String currentElement in allElements.sublist(1)) {
-            queryParameters.add(currentElement.replaceAll("?", ""));
-          }
-        } else {
-          parameters[i] = new Set.from(allElements);
-        }
-      }
-    }
-  }
-}

@@ -1,53 +1,12 @@
 import "package:unittest/unittest.dart";
-import "package:restFramework/src/router.dart";
+import "package:restFramework/src/routing/router.dart";
 import "dart:io";
 import "dart:convert";
 import "package:http/http.dart" as http;
+import "../test_utils.dart";
 
 
-class TestObject implements Matcher{
-  String id;
-  String name;
-  int value;
-  bool isTrue;
-  double doubleValue;
-  num numberValue;
 
-  TestObject(this.id, this.name, [this.value, this.isTrue, this.doubleValue, this.numberValue]);
-
-  TestObject.fromJson(Map<String, dynamic> json) {
-    this.id = json["id"];
-    this.name = json["name"];
-    this.value = json["value"];
-    this.isTrue = json["isTrue"];
-    this.doubleValue = json["doubleValue"];
-    this.numberValue = json["numberValue"];
-  }
-
-  Map<String, dynamic> toJson() {
-    Map<String, dynamic> json = new Map<String, dynamic>();
-    json["id"] = id;
-    json["name"] = name;
-    json["value"] = value;
-    json["isTrue"] = isTrue;
-    json["doubleValue"] = this.doubleValue;
-    json["numberValue"] = this.numberValue;
-    return json;
-  }
-
-  bool matches(TestObject item, Map matchsState) {
-    return item.id == this.id && item.name == this.name && item.value == this.value && item.isTrue == this.isTrue
-            && item.numberValue == this.numberValue && item.doubleValue == this.doubleValue;
-  }
-
-  Description describe(Description description) {
-    description.add(JSON.encode(this));
-    return description;
-  }
-
-
-  noSuchMethod(i) => super.noSuchMethod(i);
-}
 
 
 
@@ -307,6 +266,37 @@ void defineTests() {
       http.delete("http://$host:$port/stocks/bonds/test").then(expectAsync((response) {
         assert(response != null);
         expect(response.statusCode, HttpStatus.OK);
+      }));
+    });
+  });
+
+  group("HttpCodes", () {
+    test("200", () {
+      router = new Router("");
+      router.get("/test", () {});
+      http.get("http://$host:$port/test").then(expectAsync((response) {
+        expect(response.statusCode, HttpStatus.OK);
+      }));
+    });
+    test("404", () {
+      router = new Router("");
+      router.get("/test", () {});
+      http.get("http://$host:$port/tester").then(expectAsync((response) {
+        expect(response.statusCode, HttpStatus.NOT_FOUND);
+      }));
+    });
+    test("500", () {
+      router = new Router("");
+      router.get("/test", () {throw new Exception();});
+      http.get("http://$host:$port/test").then(expectAsync((response) {
+        expect(response.statusCode, HttpStatus.INTERNAL_SERVER_ERROR);
+      }));
+    });
+    test("MethodCode", () {
+      router = new Router("");
+      router.get("/test", (HttpRequest request) {request.response.statusCode = HttpStatus.BAD_REQUEST;});
+      http.get("http://$host:$port/test").then(expectAsync((response) {
+        expect(response.statusCode, HttpStatus.BAD_REQUEST);
       }));
     });
   });
