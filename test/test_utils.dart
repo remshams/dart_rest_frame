@@ -2,6 +2,8 @@ library restframework.router.test;
 
 import "package:unittest/unittest.dart";
 import "dart:convert";
+import "package:restFramework/src/routing/annotation.dart";
+import "package:restFramework/src/utils/enums.dart";
 
 class TestObject implements Matcher{
   String id;
@@ -46,4 +48,29 @@ class TestObject implements Matcher{
 
 
   noSuchMethod(i) => super.noSuchMethod(i);
+}
+
+@RestRessource("/")
+class TestRestClass {
+
+  @RestMethod("test", HttpMethod.get)
+  void testGet(String id, String name) {
+
+  }
+
+  @RestMethod("test", HttpMethod.post)
+  void testPost(String id, String name) {
+
+  }
+
+  @RestMethod("test", HttpMethod.put)
+  void testPut(String id, String name) {
+
+  }
+
+  @RestMethod("test", HttpMethod.delete)
+  void testDelete(String id, String name) {
+
+  }
+
 }

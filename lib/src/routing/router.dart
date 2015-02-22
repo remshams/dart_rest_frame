@@ -2,6 +2,7 @@ library restframework.router;
 
 import "package:restFramework/src/utils/enums.dart";
 import "package:restFramework/src/routing/route.dart";
+import "package:restFramework/src/routing/routing.dart" as routing;
 import "dart:io";
 import 'dart:mirrors';
 import "dart:convert";
@@ -23,6 +24,24 @@ class Router {
       _parent = parent;
     }
     _path = _createPath(path);
+  }
+
+  Router.fromRestClasses() {
+    // TODO Implementation
+    MirrorSystem mirrorSystem = currentMirrorSystem();
+    mirrorSystem.libraries.forEach((lk, l) {
+      l.declarations.forEach((dk, d) {
+        if(d is ClassMirror) {
+          ClassMirror cm = d as ClassMirror;
+          cm.metadata.forEach((md) {
+            InstanceMirror metadata = md as InstanceMirror;
+            if(metadata.type == reflectClass(RestRessource)) {
+              print('found: ${cm.simpleName} ${metadata.getField(#path).reflectee}');
+            }
+          });
+        }
+      });
+    });
   }
 
   void get(String path, Function callBack) {
@@ -74,16 +93,16 @@ class Router {
     // Check routes of methods
     switch (method) {
       case HttpMethod.get:
-        matchingRoute = _retrieveRouteRegisteredForHttpMethod(_getRoutes, requestUri);
+        matchingRoute = routing.retrieveRouteRegisteredForHttpMethod(_getRoutes, requestUri);
         break;
       case HttpMethod.put:
-        matchingRoute = _retrieveRouteRegisteredForHttpMethod(_putRoutes, requestUri);
+        matchingRoute = routing.retrieveRouteRegisteredForHttpMethod(_putRoutes, requestUri);
         break;
       case HttpMethod.post:
-        matchingRoute = _retrieveRouteRegisteredForHttpMethod(_postRoutes, requestUri);
+        matchingRoute = routing.retrieveRouteRegisteredForHttpMethod(_postRoutes, requestUri);
         break;
       case HttpMethod.delete:
-        matchingRoute = _retrieveRouteRegisteredForHttpMethod(_deleteRoutes, requestUri);
+        matchingRoute = routing.retrieveRouteRegisteredForHttpMethod(_deleteRoutes, requestUri);
         break;
       default:
 
@@ -119,40 +138,6 @@ class Router {
     request.response.statusCode = HttpStatus.OK;
     return _invokeCallBack(request, route, paramsInRequest);
 
-  }
-
-  /**
-   * Retrieve route for request and request method
-   */
-  Route _retrieveRouteRegisteredForHttpMethod(List<Route> routes, Uri requestUri) {
-    for (int i = 0; i < routes.length; i++) {
-      if(_isPathMatching(routes[i].path, requestUri)) {
-        return routes[i];
-      }
-    }
-    return null;
-  }
-
-  /**
-   * Checks if paths are matching
-   */
-  bool _isPathMatching(RestPath basePath, Uri comparePath) {
-    List<String> base = basePath.pathSegments;
-    List<String> compare = comparePath.pathSegments;
-    if (base.length != compare.length) {
-      return false;
-    }
-    for (int i = 0; i < base.length; i ++) {
-      if (compare[i].isEmpty) {
-        return false;
-      // If path elements are not equal check if it is a path parameter
-      } else if (compare[i] != base[i]) {
-        if (basePath.parameters[i] == null) {
-          return false;
-        }
-      }
-    }
-    return true;
   }
 
   /**
