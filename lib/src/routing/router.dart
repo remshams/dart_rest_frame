@@ -6,6 +6,7 @@ import "dart:io";
 import 'dart:mirrors';
 import "dart:convert";
 import "package:restFramework/src/routing/annotation.dart";
+import "dart:async";
 
 class Router {
 
@@ -94,31 +95,29 @@ class Router {
    * Route request
    */
   void route(HttpRequest request) {
-    try {
+    new Future.sync(() {
       HttpMethod method = HttpMethod.fromString(request.method);
       Route route = _registeredRoute(method, request.uri);
-      _validateRequest(request, route);
-    } catch (e) {
+      return _validateRequest(request, route);
+    }).catchError((e) {
       request.response.statusCode = HttpStatus.INTERNAL_SERVER_ERROR;
       request.response.close();
-    }
+    });
   }
 
   /**
    * Checks if request is valid
    * In case it is request is further processed
    */
-  void _validateRequest(HttpRequest request, Route route) {
+  Future _validateRequest(HttpRequest request, Route route) {
     if (route == null) {
       request.response.statusCode = HttpStatus.NOT_FOUND;
       request.response.close();
-      return;
+      return null;
     }
-    Map<String, dynamic> params = _extractParams(route, request.uri);
+    Map<String, dynamic> paramsInRequest = _extractParams(route, request.uri);
     request.response.statusCode = HttpStatus.OK;
-    UTF8.decodeStream(request).then((body) {
-      _invokeCallBack(request, route, params, body);
-    });
+    return _invokeCallBack(request, route, paramsInRequest);
 
   }
 
@@ -195,30 +194,29 @@ class Router {
   /**
    * Invokes the callback method
    */
-  void _invokeCallBack(HttpRequest request, Route route, Map<String, String> parameters, String body) {
+  Future _invokeCallBack(HttpRequest request, Route route, Map<String, String> paramsInRequest) {
     ClosureMirror closure = reflect(route.callBack);
-    List<dynamic> invokeParameters = new List<dynamic>();
+    List<Future<dynamic>> paramProcessingFutures = new List<dynamic>();
     MethodMirror func = closure.function;
     // TODO: Does not work in case function parameters are not typed
     for (ParameterMirror currentParameter in func.parameters) {
-      Set<TypeMirror> typeAnnotations = _retrieveRestFrameworkAnnotations(currentParameter);
-      if (typeAnnotations.isNotEmpty) {
-        _processAnnotations(currentParameter.type, typeAnnotations, invokeParameters, body);
-      } else {
-        // Special handling for request object
-        if (currentParameter.type.isSubtypeOf(reflectType(HttpRequest))) {
-          invokeParameters.add(request);
-        } else {
-          dynamic paramValue = parameters[MirrorSystem.getName(currentParameter.simpleName)];
-          invokeParameters.add(_parseTypeFromString(currentParameter, paramValue));
-        }
-      }
+      paramProcessingFutures.add(_assignValuesToFunctionParameters(currentParameter, paramsInRequest, request));
     }
-    InstanceMirror closureReturn = closure.apply(invokeParameters);
-    _processResponse(request, closureReturn);
+    return Future.wait(paramProcessingFutures).then((futureResults) {
+      List<dynamic> invokeParameters = new List<dynamic>();
+      futureResults.forEach((result) {
+        invokeParameters.add(result);
+      });
+      InstanceMirror closureReturn = closure.apply(invokeParameters);
+      _processResponse(request, closureReturn);
+    });
+
   }
 
-  Set<TypeMirror> _retrieveRestFrameworkAnnotations(ParameterMirror parameterMirror) {
+  /**
+   * Extract RestFramework Annotation of function parameter
+   */
+  Set<TypeMirror> _retrieveRestFrameworkFunctionAnnotations(ParameterMirror parameterMirror) {
     Set<TypeMirror> annotationTypes = new Set<TypeMirror>();
     for (InstanceMirror currentAnnotaion in parameterMirror.metadata) {
       if (currentAnnotaion.type == reflectType(RequestBody)) {
@@ -228,10 +226,34 @@ class Router {
     return annotationTypes;
   }
 
-  void _processAnnotations(ClassMirror parameterType, Set<TypeMirror> annotations, List<dynamic> invokeParameters, String requestBody) {
+  /**
+   * Assigns values from rest request to function parameters
+   */
+  Future<dynamic> _assignValuesToFunctionParameters(ParameterMirror functionParameter, Map<String, String> paramsInRequest, HttpRequest request) {
+    Completer completer = new Completer();
+    // rest framework annotations
+    Set<TypeMirror> typeAnnotations = _retrieveRestFrameworkFunctionAnnotations(functionParameter);
+    // In case function parameter has annotations, process them
+    if (typeAnnotations.isNotEmpty) {
+      _processAnnotations(functionParameter, typeAnnotations, request, completer);
+    } else {
+      // Special handling for request object
+      if (functionParameter.type.isSubtypeOf(reflectType(HttpRequest))) {
+        completer.complete(request);
+      } else {
+        dynamic paramValue = paramsInRequest[MirrorSystem.getName(functionParameter.simpleName)];
+        completer.complete(_parseTypeFromString(functionParameter, paramValue));
+      }
+    }
+    return completer.future;
+  }
+
+  void _processAnnotations(ParameterMirror functionParameter, Set<TypeMirror> annotations, HttpRequest request, Completer completer) {
     for (TypeMirror currentAnnotation in annotations) {
       if (currentAnnotation == reflectType(RequestBody)) {
-        invokeParameters.add(parameterType.newInstance(#fromJson, [JSON.decode(requestBody)]).reflectee);
+        UTF8.decodeStream(request).then((body) {
+          completer.complete(_parseTypeFromString(functionParameter, body));
+        });
       }
     }
   }
@@ -240,17 +262,21 @@ class Router {
    * Parses a string to the type reflected by [mirror]
    */
   dynamic _parseTypeFromString(ParameterMirror mirror, String value) {
-    var result = value;
-    if (value != null && !mirror.type.isSubtypeOf(reflectType(String))) {
-      // Special handling of bool
-      if (mirror.type.isSubtypeOf(reflectType(bool))) {
-        result = value.toLowerCase() == "true";
-      } else {
-        ClassMirror paramTypeMirror = mirror.type;
-        result = paramTypeMirror.invoke(#parse, [value]).reflectee;
+      var result = value;
+      if (value != null) {
+        ClassMirror classMirrorOfType = mirror.type;
+        if (mirror.type.isSubtypeOf(reflectType(String))) {
+          result = value;
+        } else if (classMirrorOfType.declarations.containsKey(#parse)) {
+          result = classMirrorOfType.invoke(#parse, [value]).reflectee;
+        } else if (mirror.type.isSubtypeOf(reflectType(bool))) {
+          result = value.toLowerCase() == "true";
+        // TODO Throws exception in case provided value is not a valid json string
+        } else {
+          result = classMirrorOfType.newInstance(#fromJson, [JSON.decode(value)]).reflectee;
+        }
       }
-    }
-    return result;
+      return result;
   }
 
   void _processResponse(HttpRequest request, InstanceMirror invokeResult) {

@@ -32,7 +32,7 @@ void defineTests() {
   });
 
   group("RequestBody", () {
-    test("RequestBody", () {
+    test("Callback function with Annotation", () {
       router = new Router("");
       TestObject reference = new TestObject("12", "test");
       void toCall(HttpRequest request, @RequestBody() TestObject body) {
@@ -40,6 +40,46 @@ void defineTests() {
       };
       router.post("/test", toCall);
       http.post("http://$host:$port/test", body: JSON.encode(reference)).then(expectAsync((response) {
+        assert(response != null);
+        expect(response.statusCode, HttpStatus.OK);
+      }));
+    });
+
+    test("Callback function without Annotation", () {
+      router = new Router("");
+      TestObject reference = new TestObject("12", "test");
+      void toCall(HttpRequest request) {
+        UTF8.decodeStream(request).then(expectAsync((body) {
+          expect(new TestObject.fromJson(JSON.decode(body)), equals(reference));
+        }));
+      };
+      router.post("/test", toCall);
+      http.post("http://$host:$port/test", body: JSON.encode(reference)).then(expectAsync((response) {
+        assert(response != null);
+        expect(response.statusCode, HttpStatus.OK);
+      }));
+    });
+
+    test("Callback function with Body as String", () {
+      router = new Router("");
+      TestObject reference = new TestObject("12", "test");
+      void toCall(HttpRequest request, @RequestBody() String body) {
+          expect(new TestObject.fromJson(JSON.decode(body)), equals(reference));
+      };
+      router.post("/test", toCall);
+      http.post("http://$host:$port/test", body: JSON.encode(reference)).then(expectAsync((response) {
+        assert(response != null);
+        expect(response.statusCode, HttpStatus.OK);
+      }));
+    });
+
+    test("Callback function with Body as Integer", () {
+      router = new Router("");
+      void toCall(HttpRequest request, @RequestBody() String body) {
+        expect(4, equals(int.parse(body)));
+      };
+      router.post("/test", toCall);
+      http.post("http://$host:$port/test", body: JSON.encode(4)).then(expectAsync((response) {
         assert(response != null);
         expect(response.statusCode, HttpStatus.OK);
       }));

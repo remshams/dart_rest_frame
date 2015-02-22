@@ -50,8 +50,8 @@ void defineTests() {
       }));
       http.get("http://$host:$port/stocks/bonds").then(expectAsync((response) {
         assert(response != null);
-        TestObject result = new TestObject.fromJson(JSON.decode(response.body));
         expect(response.statusCode, HttpStatus.OK);
+        TestObject result = new TestObject.fromJson(JSON.decode(response.body));
         expect(result, equals(new TestObject(null, null)));
       }));
       http.get("http://$host:$port/stocks/12").then(expectAsync((response) {

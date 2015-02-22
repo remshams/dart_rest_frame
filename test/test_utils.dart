@@ -13,6 +13,7 @@ class TestObject implements Matcher{
 
   TestObject(this.id, this.name, [this.value, this.isTrue, this.doubleValue, this.numberValue]);
 
+
   TestObject.fromJson(Map<String, dynamic> json) {
     this.id = json["id"];
     this.name = json["name"];
