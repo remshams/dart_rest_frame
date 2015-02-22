@@ -198,7 +198,6 @@ class Router {
     ClosureMirror closure = reflect(route.callBack);
     List<Future<dynamic>> paramProcessingFutures = new List<dynamic>();
     MethodMirror func = closure.function;
-    // TODO: Does not work in case function parameters are not typed
     for (ParameterMirror currentParameter in func.parameters) {
       paramProcessingFutures.add(_assignValuesToFunctionParameters(currentParameter, paramsInRequest, request));
     }
@@ -238,8 +237,12 @@ class Router {
       _processAnnotations(functionParameter, typeAnnotations, request, completer);
     } else {
       // Special handling for request object
-      if (functionParameter.type.isSubtypeOf(reflectType(HttpRequest))) {
+      if (functionParameter.type == reflectType(HttpRequest)) {
         completer.complete(request);
+      // In case of untyped parameter pass string
+      } else if (functionParameter.type == reflectType(dynamic)) {
+        dynamic paramValue = paramsInRequest[MirrorSystem.getName(functionParameter.simpleName)];
+        completer.complete(paramValue);
       } else {
         dynamic paramValue = paramsInRequest[MirrorSystem.getName(functionParameter.simpleName)];
         completer.complete(_parseTypeFromString(functionParameter, paramValue));

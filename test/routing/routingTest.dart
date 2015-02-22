@@ -4,6 +4,7 @@ import "dart:io";
 import "dart:convert";
 import "package:http/http.dart" as http;
 import "../test_utils.dart";
+import 'dart:mirrors';
 
 
 
@@ -197,6 +198,19 @@ void defineTests() {
       }));
     });
 
+    test("Method and UrlParameter Mismatch", () {
+      router = new Router("");
+      void toCall(String id, String name) {
+
+      };
+
+      router.get("/test", toCall);
+      http.get("http://$host:$port/test").then(expectAsync((response) {
+        assert(response != null);
+        expect(response.statusCode, HttpStatus.OK);
+      }));
+    });
+
   });
 
   group("Methods", () {
@@ -297,6 +311,54 @@ void defineTests() {
       router.get("/test", (HttpRequest request) {request.response.statusCode = HttpStatus.BAD_REQUEST;});
       http.get("http://$host:$port/test").then(expectAsync((response) {
         expect(response.statusCode, HttpStatus.BAD_REQUEST);
+      }));
+    });
+  });
+
+  group("UntypedMethods", () {
+    test("Params completely untyped", () {
+      router = new Router("");
+      TestObject reference = new TestObject("12", "test");
+      TestObject toCall(id, name) {
+        return new TestObject(id, name);
+      };
+      router.get("/test{?id}{?name}", toCall);
+      http.get("http://$host:$port/test?id=12&name=test").then(expectAsync((response) {
+        assert(response != null);
+        expect(response.statusCode, HttpStatus.OK);
+        TestObject result = new TestObject.fromJson(JSON.decode(response.body));
+        expect(result, equals(new TestObject("12", "test")));
+      }));
+    });
+
+    test("Params var typed", () {
+      router = new Router("");
+      TestObject reference = new TestObject("12", "test");
+      TestObject toCall(var id, dynamic name) {
+        return new TestObject(id, name);
+      };
+      router.get("/test{?id}{?name}", toCall);
+      http.get("http://$host:$port/test?id=12&name=test").then(expectAsync((response) {
+        assert(response != null);
+        expect(response.statusCode, HttpStatus.OK);
+        TestObject result = new TestObject.fromJson(JSON.decode(response.body));
+        expect(result, equals(new TestObject("12", "test")));
+      }));
+    });
+
+    test("HttpRequest param and dynamic types", () {
+      router = new Router("");
+      TestObject reference = new TestObject("12", "test");
+      TestObject toCall(HttpRequest request, id, name) {
+        assert(request != null);
+        return new TestObject(id, name);
+      };
+      router.get("/test{?id}{?name}", toCall);
+      http.get("http://$host:$port/test?id=12&name=test").then(expectAsync((response) {
+        assert(response != null);
+        expect(response.statusCode, HttpStatus.OK);
+        TestObject result = new TestObject.fromJson(JSON.decode(response.body));
+        expect(result, equals(new TestObject("12", "test")));
       }));
     });
   });
