@@ -4,6 +4,7 @@ import "package:unittest/unittest.dart";
 import "dart:convert";
 import "package:restFramework/src/routing/annotation.dart";
 import "package:restFramework/src/utils/enums.dart";
+import "dart:io";
 
 class TestObject implements Matcher{
   String id;
@@ -54,22 +55,38 @@ class TestObject implements Matcher{
 class TestRestClass {
 
   @RestMethod("test", HttpMethod.get)
-  void testGet(String id, String name) {
+  void testGet() {
 
+  }
+
+  @RestMethod("testParams{?id}{?name}", HttpMethod.get)
+  TestObject testGetWithParams(String id, String name) {
+    return new TestObject(id, name);
+  }
+
+  @RestMethod("{id}/testUrlParams", HttpMethod.get)
+  TestObject testGetWithUrlParams(String id) {
+    return new TestObject(id, null);
+  }
+
+  @RestMethod("{id}/testUrlAndPathParams{?name}", HttpMethod.get)
+  TestObject testGetWithUrlAndPathParams(String id, String name) {
+    return new TestObject(id, name);
   }
 
   @RestMethod("test", HttpMethod.post)
-  void testPost(String id, String name) {
-
+  TestObject testPost(@RequestBody() TestObject object) {
+    return object;
   }
 
   @RestMethod("test", HttpMethod.put)
-  void testPut(String id, String name) {
-
+  TestObject testPut(HttpRequest request, @RequestBody() TestObject object) {
+    request.response.statusCode = HttpStatus.CREATED;
+    return object;
   }
 
-  @RestMethod("test", HttpMethod.delete)
-  void testDelete(String id, String name) {
+  @RestMethod("test/{id}", HttpMethod.delete)
+  void testDelete(String id) {
 
   }
 

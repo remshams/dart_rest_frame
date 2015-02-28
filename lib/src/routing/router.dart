@@ -27,7 +27,7 @@ class Router {
   }
 
   Router.fromRestClasses() {
-    // TODO Implementation
+    // TODO Refactor --> Maybe extra method
     MirrorSystem mirrorSystem = currentMirrorSystem();
     mirrorSystem.libraries.forEach((lk, l) {
       l.declarations.forEach((dk, d) {
@@ -36,7 +36,8 @@ class Router {
           cm.metadata.forEach((md) {
             InstanceMirror metadata = md as InstanceMirror;
             if(metadata.type == reflectClass(RestRessource)) {
-              print('found: ${cm.simpleName} ${metadata.getField(#path).reflectee}');
+              _path = _createPath(metadata.getField(#path).reflectee);
+              _parseRestClasses(cm);
             }
           });
         }
@@ -44,20 +45,56 @@ class Router {
     });
   }
 
+  /**
+   * Creates routes from restClass
+   */
+  void _parseRestClasses(ClassMirror restClass) {
+    HttpMethod httpMethod;
+    Iterable<DeclarationMirror> restMethods = restClass.declarations.values.where((DeclarationMirror declaration) {
+      if (declaration is MethodMirror) {
+        for (InstanceMirror annotation in declaration.metadata) {
+          return annotation.type == reflectClass(RestMethod);
+        }
+      }
+      return false;
+    });
+    restMethods.forEach((method) {
+      method.metadata.forEach((methodAnnotation) {
+        String path = methodAnnotation.getField(#path).reflectee;
+        httpMethod = methodAnnotation.getField(#method).reflectee;
+        switch (httpMethod) {
+          case HttpMethod.get:
+            _getRoutes.add(new Route.fromRestClass(_createPath(path), restClass, method));
+            break;
+          case HttpMethod.put:
+            _putRoutes.add(new Route.fromRestClass(_createPath(path), restClass, method));
+            break;
+          case HttpMethod.post:
+            _postRoutes.add(new Route.fromRestClass(_createPath(path), restClass, method));
+            break;
+          case HttpMethod.delete:
+            _deleteRoutes.add(new Route.fromRestClass(_createPath(path), restClass, method));
+            break;
+          default:
+        }
+      });
+    });
+  }
+
   void get(String path, Function callBack) {
-    _getRoutes.add(new Route(_createPath(_path.path + path), callBack));
+    _getRoutes.add(new Route(_createPath(_path.path + path), (reflect(callBack) as ClosureMirror)));
   }
 
   void put(String path, Function callBack) {
-    _putRoutes.add(new Route(_createPath(_path.path + path), callBack));
+    _putRoutes.add(new Route(_createPath(_path.path + path), (reflect(callBack) as ClosureMirror)));
   }
 
   void post(String path, Function callBack) {
-    _postRoutes.add(new Route(_createPath(_path.path + path), callBack));
+    _postRoutes.add(new Route(_createPath(_path.path + path), (reflect(callBack) as ClosureMirror)));
   }
 
   void delete(String path, Function callBack) {
-    _deleteRoutes.add(new Route(_createPath(_path.path + path), callBack));
+    _deleteRoutes.add(new Route(_createPath(_path.path + path), (reflect(callBack) as ClosureMirror)));
   }
 
   Router child(String path) {
@@ -180,9 +217,13 @@ class Router {
    * Invokes the callback method
    */
   Future _invokeCallBack(HttpRequest request, Route route, Map<String, String> paramsInRequest) {
-    ClosureMirror closure = reflect(route.callBack);
+    MethodMirror func;
     List<Future<dynamic>> paramProcessingFutures = new List<dynamic>();
-    MethodMirror func = closure.function;
+    if (route.isFromRestClass) {
+      func = route.callBackMethod;
+    } else {
+      func = route.callBack.function;
+    }
     for (ParameterMirror currentParameter in func.parameters) {
       paramProcessingFutures.add(_assignValuesToFunctionParameters(currentParameter, paramsInRequest, request));
     }
@@ -191,8 +232,8 @@ class Router {
       futureResults.forEach((result) {
         invokeParameters.add(result);
       });
-      InstanceMirror closureReturn = closure.apply(invokeParameters);
-      _processResponse(request, closureReturn);
+      dynamic callBackReturn = route.invokeCallback(invokeParameters);
+      _processResponse(request, callBackReturn);
     });
 
   }
@@ -267,8 +308,8 @@ class Router {
       return result;
   }
 
-  void _processResponse(HttpRequest request, InstanceMirror invokeResult) {
-    String json = JSON.encode(invokeResult.reflectee);
+  void _processResponse(HttpRequest request, dynamic invokeResult) {
+    String json = JSON.encode(invokeResult);
     request.response.write(json);
     request.response.close();
   }

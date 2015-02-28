@@ -30,7 +30,7 @@ void defineTests() {
   });
 
   group("Routes", () {
-    test("Routing", () {
+    test("Plain rooting", () {
       router = new Router.fromRestClasses();
       http.get("http://$host:$port/test").then(expectAsync((response) {
         assert(response != null);
@@ -40,7 +40,7 @@ void defineTests() {
 
     test("Routing with PathParams", () {
       router = new Router.fromRestClasses();
-      http.get("http://$host:$port/stocks/12").then(expectAsync((response) {
+      http.get("http://$host:$port/12/testUrlParams").then(expectAsync((response) {
         assert(response != null);
         expect(response.statusCode, HttpStatus.OK);
         TestObject result = new TestObject.fromJson(JSON.decode(response.body));
@@ -50,7 +50,7 @@ void defineTests() {
 
     test("Routing with Url Params", () {
       router = new Router.fromRestClasses();
-      http.get("http://$host:$port/test?id=12&name=test").then(expectAsync((response) {
+      http.get("http://$host:$port/testParams?id=12&name=test").then(expectAsync((response) {
         assert(response != null);
         expect(response.statusCode, HttpStatus.OK);
         TestObject result = new TestObject.fromJson(JSON.decode(response.body));
@@ -60,11 +60,51 @@ void defineTests() {
 
     test("Routing with Url and Path Params", () {
       router = new Router.fromRestClasses();
-      http.get("http://$host:$port/stocks/12?name=test").then(expectAsync((response) {
+      http.get("http://$host:$port/12/testUrlAndPathParams?name=test").then(expectAsync((response) {
         assert(response != null);
         expect(response.statusCode, HttpStatus.OK);
         TestObject result = new TestObject.fromJson(JSON.decode(response.body));
         expect(result, equals(new TestObject("12", "test")));
+      }));
+    });
+  });
+
+  group("Rest Methods", () {
+    test("Get", () {
+      router = new Router.fromRestClasses();
+      http.get("http://$host:$port/test").then(expectAsync((response) {
+        assert(response != null);
+        expect(response.statusCode, HttpStatus.OK);
+      }));
+    });
+
+    test("Post", () {
+      router = new Router.fromRestClasses();
+      TestObject reference = new TestObject("12", "test");
+      http.post("http://$host:$port/test", body : JSON.encode(reference)).then(expectAsync((response) {
+        assert(response != null);
+        expect(response.statusCode, HttpStatus.OK);
+        TestObject result = new TestObject.fromJson(JSON.decode(response.body));
+        expect(result, equals(new TestObject("12", "test")));
+      }));
+    });
+
+    test("Put", () {
+      router = new Router.fromRestClasses();
+      TestObject reference = new TestObject("12", "test");
+      http.put("http://$host:$port/test", body : JSON.encode(reference)).then(expectAsync((response) {
+        assert(response != null);
+        expect(response.statusCode, HttpStatus.CREATED);
+        TestObject result = new TestObject.fromJson(JSON.decode(response.body));
+        expect(result, equals(new TestObject("12", "test")));
+      }));
+    });
+
+    test("Delete", () {
+      router = new Router.fromRestClasses();
+      http.delete("http://$host:$port/test/12").then(expectAsync((response) {
+        assert(response != null);
+        expect(response.statusCode, HttpStatus.OK);
       }));
     });
   });

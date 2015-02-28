@@ -2,13 +2,38 @@ library restframework.route;
 
 import "package:restFramework/src/utils/utils.dart";
 import "dart:io";
+import 'dart:mirrors';
 
 class Route {
   RestPath path;
   Map<HttpHeaders, String> header;
-  Function callBack;
+  ClosureMirror callBack;
+  ClassMirror classOfCallback;
+  MethodMirror callBackMethod;
+  bool isFromRestClass = false;
 
   Route(this.path, this.callBack);
+
+  Route.fromRestClass(this.path, this.classOfCallback, this.callBackMethod) {
+    isFromRestClass = true;
+  }
+
+  /**
+   * Invoke callback
+   */
+  dynamic invokeCallback(List<dynamic> invokeParameters) {
+    if (isFromRestClass) {
+      if (callBackMethod.isStatic) {
+        return classOfCallback.invoke(callBackMethod.simpleName, invokeParameters).reflectee;
+      } else {
+        InstanceMirror classInstance = classOfCallback.newInstance(new Symbol(""), []);
+        return classInstance.invoke(callBackMethod.simpleName, invokeParameters).reflectee;
+      }
+    } else {
+      return callBack.apply(invokeParameters).reflectee;
+    }
+  }
+
 }
 
 
