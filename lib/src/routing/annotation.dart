@@ -20,3 +20,9 @@ class RestMethod {
 
   const RestMethod(this.path, this.method);
 }
+
+class PathParam {
+  final String name;
+
+  const PathParam([this.name]);
+}

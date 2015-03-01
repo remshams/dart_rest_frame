@@ -91,3 +91,35 @@ class TestRestClass {
   }
 
 }
+
+@RestResource("/paramAnnotation/")
+class RestClassParamAnnotation {
+
+  @RestMethod("testNoName", HttpMethod.get)
+  TestObject testNoName(@PathParam() String id) {
+    return new TestObject(id, null);
+  }
+
+  @RestMethod("testParamSameName", HttpMethod.get)
+  TestObject testParamSameName(@PathParam("id") String id) {
+    return new TestObject(id, null);
+  }
+
+  @RestMethod("testParamDifferentName", HttpMethod.get)
+  TestObject testParamDifferentName(@PathParam("myId") String idOfObject) {
+    return new TestObject(idOfObject, null);
+  }
+
+  @RestMethod("testParamNotProvided", HttpMethod.get)
+  TestObject testParamNotProvided(@PathParam("Id") String id) {
+    return new TestObject(id, null);
+  }
+
+  @RestMethod("testParamMixed", HttpMethod.post)
+  TestObject testParamMixed(@PathParam("id") String id, int value, @RequestBody() TestObject object) {
+    object.id = id;
+    object.value = value;
+    return object;
+  }
+
+}

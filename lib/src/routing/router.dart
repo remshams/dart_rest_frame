@@ -31,8 +31,7 @@ class Router {
     restResourceClasses.forEach((currentRestClass) {
       currentRestClass.metadata.forEach((currentMetaData) {
         if (currentMetaData.type == reflectClass(RestResource)) {
-          _path = _createPath(currentMetaData.getField(#path).reflectee);
-          _createRoutesFromRestClass(currentRestClass);
+          _createRoutesFromRestClass(currentRestClass, currentMetaData.getField(#path).reflectee);
         }
       });
     });
@@ -41,7 +40,7 @@ class Router {
   /**
    * Creates routes from restClass
    */
-  void _createRoutesFromRestClass(ClassMirror restClass) {
+  void _createRoutesFromRestClass(ClassMirror restClass, String rootPath) {
     Iterable<DeclarationMirror> restMethods = routing.retrieveRestMethods(restClass);
     restMethods.forEach((method) {
       method.metadata.forEach((methodAnnotation) {
@@ -49,16 +48,16 @@ class Router {
         HttpMethod httpMethod = methodAnnotation.getField(#method).reflectee;
         switch (httpMethod) {
           case HttpMethod.get:
-            _getRoutes.add(new Route.fromRestClass(_createPath(path), restClass, method));
+            _getRoutes.add(new Route.fromRestClass(_createPath(rootPath + path), restClass, method));
             break;
           case HttpMethod.put:
-            _putRoutes.add(new Route.fromRestClass(_createPath(path), restClass, method));
+            _putRoutes.add(new Route.fromRestClass(_createPath(rootPath + path), restClass, method));
             break;
           case HttpMethod.post:
-            _postRoutes.add(new Route.fromRestClass(_createPath(path), restClass, method));
+            _postRoutes.add(new Route.fromRestClass(_createPath(rootPath + path), restClass, method));
             break;
           case HttpMethod.delete:
-            _deleteRoutes.add(new Route.fromRestClass(_createPath(path), restClass, method));
+            _deleteRoutes.add(new Route.fromRestClass(_createPath(rootPath + path), restClass, method));
             break;
           default:
         }
@@ -96,12 +95,14 @@ class Router {
    * Get route for request
    */
   Route _registeredRoute(HttpMethod method, Uri requestUri) {
-    List<String> routeElements = _path.pathSegments;
-    List<String> pathElements = requestUri.pathSegments;
     // Number of elements in request must match router path
-    for (int i = 0; i < routeElements.length; i++) {
-      if (routeElements[i].isNotEmpty && pathElements[i] == null || routeElements[i] != pathElements[i]) {
-        return null;
+    if (_path != null) {
+      List<String> routeElements = _path.pathSegments;
+      List<String> pathElements = requestUri.pathSegments;
+      for (int i = 0; i < routeElements.length; i++) {
+        if (routeElements[i].isNotEmpty && pathElements[i] == null || routeElements[i] != pathElements[i]) {
+          return null;
+        }
       }
     }
     Route matchingRoute;
@@ -143,6 +144,7 @@ class Router {
     }).catchError((e) {
       request.response.statusCode = HttpStatus.INTERNAL_SERVER_ERROR;
       request.response.close();
+      throw e;
     });
   }
 
@@ -226,11 +228,13 @@ class Router {
   /**
    * Extract RestFramework Annotation of function parameter
    */
-  Set<TypeMirror> _retrieveRestFrameworkFunctionAnnotations(ParameterMirror parameterMirror) {
-    Set<TypeMirror> annotationTypes = new Set<TypeMirror>();
+  Set<InstanceMirror> _retrieveRestFrameworkFunctionAnnotations(ParameterMirror parameterMirror) {
+    Set<InstanceMirror> annotationTypes = new Set<InstanceMirror>();
     for (InstanceMirror currentAnnotaion in parameterMirror.metadata) {
       if (currentAnnotaion.type == reflectType(RequestBody)) {
-        annotationTypes.add(currentAnnotaion.type);
+        annotationTypes.add(currentAnnotaion);
+      } else if (currentAnnotaion.type == reflectType(PathParam)) {
+        annotationTypes.add(currentAnnotaion);
       }
     }
     return annotationTypes;
@@ -242,10 +246,10 @@ class Router {
   Future<dynamic> _assignValuesToFunctionParameters(ParameterMirror functionParameter, Map<String, String> paramsInRequest, HttpRequest request) {
     Completer completer = new Completer();
     // rest framework annotations
-    Set<TypeMirror> typeAnnotations = _retrieveRestFrameworkFunctionAnnotations(functionParameter);
+    Set<InstanceMirror> typeAnnotations = _retrieveRestFrameworkFunctionAnnotations(functionParameter);
     // In case function parameter has annotations, process them
     if (typeAnnotations.isNotEmpty) {
-      _processAnnotations(functionParameter, typeAnnotations, request, completer);
+      _processAnnotations(functionParameter, typeAnnotations, request, paramsInRequest, completer);
     } else {
       // Special handling for request object
       if (functionParameter.type == reflectType(HttpRequest)) {
@@ -262,12 +266,18 @@ class Router {
     return completer.future;
   }
 
-  void _processAnnotations(ParameterMirror functionParameter, Set<TypeMirror> annotations, HttpRequest request, Completer completer) {
-    for (TypeMirror currentAnnotation in annotations) {
-      if (currentAnnotation == reflectType(RequestBody)) {
+  void _processAnnotations(ParameterMirror functionParameter, Set<InstanceMirror> annotations, HttpRequest request, Map<String, String> paramsInRequest, Completer completer) {
+    for (InstanceMirror currentAnnotation in annotations) {
+      if (currentAnnotation.type == reflectType(RequestBody)) {
         UTF8.decodeStream(request).then((body) {
           completer.complete(_parseTypeFromString(functionParameter, body));
         });
+      } else if (currentAnnotation.type == reflectType(PathParam)) {
+        dynamic paramValue = paramsInRequest[currentAnnotation.getField(#name).reflectee];
+        if (paramValue == null || paramValue.isEmpty) {
+          paramValue = paramsInRequest[MirrorSystem.getName(functionParameter.simpleName)];
+        }
+        completer.complete(paramValue);
       }
     }
   }

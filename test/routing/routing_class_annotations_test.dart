@@ -29,7 +29,7 @@ void defineTests() {
     serverInstance.close();
   });
 
-  group("Routes", () {
+  group("Standard Routes", () {
     test("Plain rooting", () {
       router = new Router.fromAnnotation();
       http.get("http://$host:$port/test").then(expectAsync((response) {
@@ -65,6 +65,56 @@ void defineTests() {
         expect(response.statusCode, HttpStatus.OK);
         TestObject result = new TestObject.fromJson(JSON.decode(response.body));
         expect(result, equals(new TestObject("12", "test")));
+      }));
+    });
+  });
+
+  group("PathParams Routes", () {
+
+    test("PathParam - no name", () {
+      router = new Router.fromAnnotation();
+      http.get("http://$host:$port/paramAnnotation/testNoName?id=12").then(expectAsync((response) {
+        assert(response != null);
+        expect(response.statusCode, HttpStatus.OK);
+        TestObject result = new TestObject.fromJson(JSON.decode(response.body));
+        expect(result, equals(new TestObject("12", null)));
+      }));
+    });
+    test("PathParam - same name", () {
+      router = new Router.fromAnnotation();
+      http.get("http://$host:$port/paramAnnotation/testParamSameName?id=12").then(expectAsync((response) {
+        assert(response != null);
+        expect(response.statusCode, HttpStatus.OK);
+        TestObject result = new TestObject.fromJson(JSON.decode(response.body));
+        expect(result, equals(new TestObject("12", null)));
+      }));
+    });
+    test("PathParam - different name", () {
+      router = new Router.fromAnnotation();
+      http.get("http://$host:$port/paramAnnotation/testParamDifferentName?myId=12").then(expectAsync((response) {
+        assert(response != null);
+        expect(response.statusCode, HttpStatus.OK);
+        TestObject result = new TestObject.fromJson(JSON.decode(response.body));
+        expect(result, equals(new TestObject("12", null)));
+      }));
+    });
+    test("PathParam - not provided", () {
+      router = new Router.fromAnnotation();
+      http.get("http://$host:$port/paramAnnotation/testParamNotProvided").then(expectAsync((response) {
+        assert(response != null);
+        expect(response.statusCode, HttpStatus.OK);
+        TestObject result = new TestObject.fromJson(JSON.decode(response.body));
+        expect(result, equals(new TestObject(null, null)));
+      }));
+    });
+    test("PathParam - mixed", () {
+      router = new Router.fromAnnotation();
+      TestObject reference = new TestObject("16", "test", 12);
+      http.post("http://$host:$port/paramAnnotation/testParamMixed?id=12&value=12", body : JSON.encode(reference)).then(expectAsync((response) {
+        assert(response != null);
+        expect(response.statusCode, HttpStatus.OK);
+        TestObject result = new TestObject.fromJson(JSON.decode(response.body));
+        expect(result, equals(new TestObject("12", "test", 12)));
       }));
     });
   });
