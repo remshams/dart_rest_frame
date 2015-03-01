@@ -1,6 +1,8 @@
 library restframework.routing;
 
 import "package:restFramework/src/routing/route.dart";
+import "dart:mirrors";
+import "package:restFramework/src/routing/annotation.dart";
 
 /**
  * Retrieve route for request and request method
@@ -34,4 +36,42 @@ bool _isPathMatching(RestPath basePath, Uri comparePath) {
     }
   }
   return true;
+}
+
+/**
+ * Creates routes from restClass
+ */
+Iterable<DeclarationMirror> retrieveRestMethods(ClassMirror restClass) {
+  Iterable<DeclarationMirror> restMethods = restClass.declarations.values.where((DeclarationMirror declaration) {
+    if (declaration is MethodMirror) {
+      for (InstanceMirror annotation in declaration.metadata) {
+        return annotation.type == reflectClass(RestMethod);
+      }
+    }
+    return false;
+  });
+  return restMethods;
+}
+
+/**
+ * Retrieves all classes with [RestResource] Annotation
+ */
+List<ClassMirror> retrieveRestClassesForIsolate() {
+  List<ClassMirror> restResourceClasses = new List<ClassMirror>();
+  MirrorSystem mirrorSystem = currentMirrorSystem();
+  mirrorSystem.libraries.values.forEach((currentLibraryMirror) {
+    currentLibraryMirror.declarations.values.forEach((currentDeclarationMirror) {
+      if(currentDeclarationMirror is ClassMirror) {
+        ClassMirror classMirror = currentDeclarationMirror as ClassMirror;
+        classMirror.metadata.forEach((currentMetaDataMirror) {
+          // Check if current class is a rest resource
+          if(currentMetaDataMirror.type == reflectClass(RestResource)) {
+            //_path = _createPath(metadata.getField(#path).reflectee);
+            restResourceClasses.add(classMirror);
+          }
+        });
+      }
+    });
+  });
+  return restResourceClasses;
 }

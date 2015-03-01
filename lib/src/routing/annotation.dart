@@ -8,10 +8,10 @@ class RequestBody {
 
 }
 
-class RestRessource {
+class RestResource {
   final String path;
 
-  const RestRessource(this.path);
+  const RestResource(this.path);
 }
 
 class RestMethod {

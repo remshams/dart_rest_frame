@@ -26,20 +26,13 @@ class Router {
     _path = _createPath(path);
   }
 
-  Router.fromRestClasses() {
-    // TODO Refactor --> Maybe extra method
-    MirrorSystem mirrorSystem = currentMirrorSystem();
-    mirrorSystem.libraries.forEach((lk, l) {
-      l.declarations.forEach((dk, d) {
-        if(d is ClassMirror) {
-          ClassMirror cm = d as ClassMirror;
-          cm.metadata.forEach((md) {
-            InstanceMirror metadata = md as InstanceMirror;
-            if(metadata.type == reflectClass(RestRessource)) {
-              _path = _createPath(metadata.getField(#path).reflectee);
-              _parseRestClasses(cm);
-            }
-          });
+  Router.fromAnnotation() {
+    List<ClassMirror> restResourceClasses = routing.retrieveRestClassesForIsolate();
+    restResourceClasses.forEach((currentRestClass) {
+      currentRestClass.metadata.forEach((currentMetaData) {
+        if (currentMetaData.type == reflectClass(RestResource)) {
+          _path = _createPath(currentMetaData.getField(#path).reflectee);
+          _createRoutesFromRestClass(currentRestClass);
         }
       });
     });
@@ -48,20 +41,12 @@ class Router {
   /**
    * Creates routes from restClass
    */
-  void _parseRestClasses(ClassMirror restClass) {
-    HttpMethod httpMethod;
-    Iterable<DeclarationMirror> restMethods = restClass.declarations.values.where((DeclarationMirror declaration) {
-      if (declaration is MethodMirror) {
-        for (InstanceMirror annotation in declaration.metadata) {
-          return annotation.type == reflectClass(RestMethod);
-        }
-      }
-      return false;
-    });
+  void _createRoutesFromRestClass(ClassMirror restClass) {
+    Iterable<DeclarationMirror> restMethods = routing.retrieveRestMethods(restClass);
     restMethods.forEach((method) {
       method.metadata.forEach((methodAnnotation) {
         String path = methodAnnotation.getField(#path).reflectee;
-        httpMethod = methodAnnotation.getField(#method).reflectee;
+        HttpMethod httpMethod = methodAnnotation.getField(#method).reflectee;
         switch (httpMethod) {
           case HttpMethod.get:
             _getRoutes.add(new Route.fromRestClass(_createPath(path), restClass, method));

@@ -51,7 +51,7 @@ class TestObject implements Matcher{
   noSuchMethod(i) => super.noSuchMethod(i);
 }
 
-@RestRessource("/")
+@RestResource("/")
 class TestRestClass {
 
   @RestMethod("test", HttpMethod.get)

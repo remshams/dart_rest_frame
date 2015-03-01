@@ -31,7 +31,7 @@ void defineTests() {
 
   group("Routes", () {
     test("Plain rooting", () {
-      router = new Router.fromRestClasses();
+      router = new Router.fromAnnotation();
       http.get("http://$host:$port/test").then(expectAsync((response) {
         assert(response != null);
         expect(response.statusCode, HttpStatus.OK);
@@ -39,7 +39,7 @@ void defineTests() {
     });
 
     test("Routing with PathParams", () {
-      router = new Router.fromRestClasses();
+      router = new Router.fromAnnotation();
       http.get("http://$host:$port/12/testUrlParams").then(expectAsync((response) {
         assert(response != null);
         expect(response.statusCode, HttpStatus.OK);
@@ -49,7 +49,7 @@ void defineTests() {
     });
 
     test("Routing with Url Params", () {
-      router = new Router.fromRestClasses();
+      router = new Router.fromAnnotation();
       http.get("http://$host:$port/testParams?id=12&name=test").then(expectAsync((response) {
         assert(response != null);
         expect(response.statusCode, HttpStatus.OK);
@@ -59,7 +59,7 @@ void defineTests() {
     });
 
     test("Routing with Url and Path Params", () {
-      router = new Router.fromRestClasses();
+      router = new Router.fromAnnotation();
       http.get("http://$host:$port/12/testUrlAndPathParams?name=test").then(expectAsync((response) {
         assert(response != null);
         expect(response.statusCode, HttpStatus.OK);
@@ -71,7 +71,7 @@ void defineTests() {
 
   group("Rest Methods", () {
     test("Get", () {
-      router = new Router.fromRestClasses();
+      router = new Router.fromAnnotation();
       http.get("http://$host:$port/test").then(expectAsync((response) {
         assert(response != null);
         expect(response.statusCode, HttpStatus.OK);
@@ -79,7 +79,7 @@ void defineTests() {
     });
 
     test("Post", () {
-      router = new Router.fromRestClasses();
+      router = new Router.fromAnnotation();
       TestObject reference = new TestObject("12", "test");
       http.post("http://$host:$port/test", body : JSON.encode(reference)).then(expectAsync((response) {
         assert(response != null);
@@ -90,7 +90,7 @@ void defineTests() {
     });
 
     test("Put", () {
-      router = new Router.fromRestClasses();
+      router = new Router.fromAnnotation();
       TestObject reference = new TestObject("12", "test");
       http.put("http://$host:$port/test", body : JSON.encode(reference)).then(expectAsync((response) {
         assert(response != null);
@@ -101,7 +101,7 @@ void defineTests() {
     });
 
     test("Delete", () {
-      router = new Router.fromRestClasses();
+      router = new Router.fromAnnotation();
       http.delete("http://$host:$port/test/12").then(expectAsync((response) {
         assert(response != null);
         expect(response.statusCode, HttpStatus.OK);
