@@ -2,7 +2,11 @@ library restframework.router.test;
 
 import "package:unittest/unittest.dart";
 import "dart:convert";
+import "package:restFramework/src/routing/annotation.dart";
 
+/**
+ * Object for testing object parsing
+ */
 class TestObject implements Matcher{
   String id;
   String name;
@@ -46,4 +50,22 @@ class TestObject implements Matcher{
 
 
   noSuchMethod(i) => super.noSuchMethod(i);
+}
+
+/**
+ * Test class for testing method passing (Closures)
+ */
+class TestRestClass {
+
+  TestObject perform(@RequestBody() TestObject object) {
+    return object;
+  }
+
+  static TestObject performStatic(@RequestBody() TestObject object) {
+    return object;
+  }
+}
+
+TestObject performGlobal(@RequestBody() TestObject object) {
+  return object;
 }

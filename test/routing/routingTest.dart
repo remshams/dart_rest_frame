@@ -362,6 +362,44 @@ void defineTests() {
       }));
     });
   });
+
+  group("ClassMethods", () {
+    test("Class Method", () {
+      router = new Router("");
+      TestObject reference = new TestObject("12", "test");
+      TestRestClass methodClass = new TestRestClass();
+      router.post("/test", methodClass.perform);
+      http.post("http://$host:$port/test", body : JSON.encode(reference)).then(expectAsync((response) {
+        assert(response != null);
+        expect(response.statusCode, HttpStatus.OK);
+        TestObject result = new TestObject.fromJson(JSON.decode(response.body));
+        expect(result, equals(new TestObject("12", "test")));
+      }));
+    });
+
+    test("Static Class Method", () {
+      router = new Router("");
+      TestObject reference = new TestObject("12", "test");
+      router.post("/test", TestRestClass.performStatic);
+      http.post("http://$host:$port/test", body : JSON.encode(reference)).then(expectAsync((response) {
+        assert(response != null);
+        expect(response.statusCode, HttpStatus.OK);
+        TestObject result = new TestObject.fromJson(JSON.decode(response.body));
+        expect(result, equals(new TestObject("12", "test")));
+      }));
+    });
+    test("Global method", () {
+      router = new Router("");
+      TestObject reference = new TestObject("12", "test");
+      router.post("/test", performGlobal);
+      http.post("http://$host:$port/test", body : JSON.encode(reference)).then(expectAsync((response) {
+        assert(response != null);
+        expect(response.statusCode, HttpStatus.OK);
+        TestObject result = new TestObject.fromJson(JSON.decode(response.body));
+        expect(result, equals(new TestObject("12", "test")));
+      }));
+    });
+  });
 }
 
 void main() {
