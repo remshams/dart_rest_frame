@@ -48,16 +48,16 @@ class Router {
         HttpMethod httpMethod = methodAnnotation.getField(#method).reflectee;
         switch (httpMethod) {
           case HttpMethod.get:
-            _getRoutes.add(new Route.fromRestClass(_createPath(rootPath + path), restClass, method));
+            _getRoutes.add(new Route.fromRestClass(_createPath(rootPath + path), method));
             break;
           case HttpMethod.put:
-            _putRoutes.add(new Route.fromRestClass(_createPath(rootPath + path), restClass, method));
+            _putRoutes.add(new Route.fromRestClass(_createPath(rootPath + path), method));
             break;
           case HttpMethod.post:
-            _postRoutes.add(new Route.fromRestClass(_createPath(rootPath + path), restClass, method));
+            _postRoutes.add(new Route.fromRestClass(_createPath(rootPath + path), method));
             break;
           case HttpMethod.delete:
-            _deleteRoutes.add(new Route.fromRestClass(_createPath(rootPath + path), restClass, method));
+            _deleteRoutes.add(new Route.fromRestClass(_createPath(rootPath + path), method));
             break;
           default:
         }
@@ -144,7 +144,6 @@ class Router {
     }).catchError((e) {
       request.response.statusCode = HttpStatus.INTERNAL_SERVER_ERROR;
       request.response.close();
-      throw e;
     });
   }
 
@@ -204,14 +203,8 @@ class Router {
    * Invokes the callback method
    */
   Future _invokeCallBack(HttpRequest request, Route route, Map<String, String> paramsInRequest) {
-    MethodMirror func;
     List<Future<dynamic>> paramProcessingFutures = new List<dynamic>();
-    if (route.isFromRestClass) {
-      func = route.callBackMethod;
-    } else {
-      func = route.callBack.function;
-    }
-    for (ParameterMirror currentParameter in func.parameters) {
+    for (MethodParameter currentParameter in route.method.parameters) {
       paramProcessingFutures.add(_assignValuesToFunctionParameters(currentParameter, paramsInRequest, request));
     }
     return Future.wait(paramProcessingFutures).then((futureResults) {
@@ -219,67 +212,37 @@ class Router {
       futureResults.forEach((result) {
         invokeParameters.add(result);
       });
-      dynamic callBackReturn = route.invokeCallback(invokeParameters);
+      dynamic callBackReturn = route.method.invoke(invokeParameters);
       _processResponse(request, callBackReturn);
     });
 
   }
 
   /**
-   * Extract RestFramework Annotation of function parameter
-   */
-  Set<InstanceMirror> _retrieveRestFrameworkFunctionAnnotations(ParameterMirror parameterMirror) {
-    Set<InstanceMirror> annotationTypes = new Set<InstanceMirror>();
-    for (InstanceMirror currentAnnotaion in parameterMirror.metadata) {
-      if (currentAnnotaion.type == reflectType(RequestBody)) {
-        annotationTypes.add(currentAnnotaion);
-      } else if (currentAnnotaion.type == reflectType(PathParam)) {
-        annotationTypes.add(currentAnnotaion);
-      }
-    }
-    return annotationTypes;
-  }
-
-  /**
    * Assigns values from rest request to function parameters
    */
-  Future<dynamic> _assignValuesToFunctionParameters(ParameterMirror functionParameter, Map<String, String> paramsInRequest, HttpRequest request) {
+  Future<dynamic> _assignValuesToFunctionParameters(MethodParameter functionParameter, Map<String, String> paramsInRequest, HttpRequest request) {
     Completer completer = new Completer();
     // rest framework annotations
-    Set<InstanceMirror> typeAnnotations = _retrieveRestFrameworkFunctionAnnotations(functionParameter);
-    // In case function parameter has annotations, process them
-    if (typeAnnotations.isNotEmpty) {
-      _processAnnotations(functionParameter, typeAnnotations, request, paramsInRequest, completer);
+    if (functionParameter.isHttpRequestParameter) {
+      completer.complete(request);
+    } else if (functionParameter.isRequestBodyParameter) {
+      UTF8.decodeStream(request).then((body) {
+        completer.complete(_parseTypeFromString(functionParameter.parameterMirror, body));
+      });
     } else {
-      // Special handling for request object
-      if (functionParameter.type == reflectType(HttpRequest)) {
-        completer.complete(request);
-      // In case of untyped parameter pass string
-      } else if (functionParameter.type == reflectType(dynamic)) {
-        dynamic paramValue = paramsInRequest[MirrorSystem.getName(functionParameter.simpleName)];
+      String funcParameterName = functionParameter.pathParamName;
+      if (funcParameterName == null || funcParameterName.isEmpty) {
+        funcParameterName = MirrorSystem.getName(functionParameter.parameterMirror.simpleName);
+      }
+      dynamic paramValue = paramsInRequest[funcParameterName];
+      if (functionParameter.parameterMirror.type == reflectType(dynamic)) {
         completer.complete(paramValue);
       } else {
-        dynamic paramValue = paramsInRequest[MirrorSystem.getName(functionParameter.simpleName)];
-        completer.complete(_parseTypeFromString(functionParameter, paramValue));
+        completer.complete(_parseTypeFromString(functionParameter.parameterMirror, paramValue));
       }
     }
     return completer.future;
-  }
-
-  void _processAnnotations(ParameterMirror functionParameter, Set<InstanceMirror> annotations, HttpRequest request, Map<String, String> paramsInRequest, Completer completer) {
-    for (InstanceMirror currentAnnotation in annotations) {
-      if (currentAnnotation.type == reflectType(RequestBody)) {
-        UTF8.decodeStream(request).then((body) {
-          completer.complete(_parseTypeFromString(functionParameter, body));
-        });
-      } else if (currentAnnotation.type == reflectType(PathParam)) {
-        dynamic paramValue = paramsInRequest[currentAnnotation.getField(#name).reflectee];
-        if (paramValue == null || paramValue.isEmpty) {
-          paramValue = paramsInRequest[MirrorSystem.getName(functionParameter.simpleName)];
-        }
-        completer.complete(paramValue);
-      }
-    }
   }
 
   /**

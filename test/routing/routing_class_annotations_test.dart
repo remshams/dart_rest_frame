@@ -117,6 +117,15 @@ void defineTests() {
         expect(result, equals(new TestObject("12", "test", 12)));
       }));
     });
+    test("PathParam - Annotation and String param mixed", () {
+      router = new Router.fromAnnotation();
+      http.get("http://$host:$port/paramAnnotation/testAnnotationAndString?id=12&name=wrong&nameAnnotation=right").then(expectAsync((response) {
+        assert(response != null);
+        expect(response.statusCode, HttpStatus.OK);
+        TestObject result = new TestObject.fromJson(JSON.decode(response.body));
+        expect(result, equals(new TestObject("12", "right")));
+      }));
+    });
   });
 
   group("Rest Methods", () {

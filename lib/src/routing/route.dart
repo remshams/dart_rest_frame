@@ -3,35 +3,19 @@ library restframework.route;
 import "package:restFramework/src/utils/utils.dart";
 import "dart:io";
 import 'dart:mirrors';
+import "package:restFramework/src/routing/annotation.dart";
 
 class Route {
   RestPath path;
   Map<HttpHeaders, String> header;
-  ClosureMirror callBack;
-  ClassMirror classOfCallback;
-  MethodMirror callBackMethod;
-  bool isFromRestClass = false;
+  AbstractRestMethod method;
 
-  Route(this.path, this.callBack);
-
-  Route.fromRestClass(this.path, this.classOfCallback, this.callBackMethod) {
-    isFromRestClass = true;
+  Route(this.path, ClosureMirror restClosure) {
+    method = new RestClosure(restClosure);
   }
 
-  /**
-   * Invoke callback
-   */
-  dynamic invokeCallback(List<dynamic> invokeParameters) {
-    if (isFromRestClass) {
-      if (callBackMethod.isStatic) {
-        return classOfCallback.invoke(callBackMethod.simpleName, invokeParameters).reflectee;
-      } else {
-        InstanceMirror classInstance = classOfCallback.newInstance(new Symbol(""), []);
-        return classInstance.invoke(callBackMethod.simpleName, invokeParameters).reflectee;
-      }
-    } else {
-      return callBack.apply(invokeParameters).reflectee;
-    }
+  Route.fromRestClass(this.path, MethodMirror restMethod) {
+    method = new RestClassMethod(restMethod);
   }
 
 }
@@ -85,5 +69,91 @@ class RestPath {
         }
       }
     }
+  }
+}
+
+/**
+ * Wrapper for function of a specific route
+ * Contains the function executed for a specific route
+ */
+abstract class AbstractRestMethod {
+  MethodMirror function;
+  List<MethodParameter> parameters;
+
+  AbstractRestMethod(this.function) {
+    parameters = new List<MethodParameter>();
+    _extractParameters();
+  }
+
+  dynamic invoke(List<dynamic> invokeParameters);
+
+  void _extractParameters() {
+    function.parameters.forEach((currentParameter) {
+      parameters.add(new MethodParameter(currentParameter));
+    });
+  }
+
+}
+/**
+ * Wrapper for a provided closure
+ */
+class RestClosure extends AbstractRestMethod {
+  ClosureMirror closure;
+
+  RestClosure(ClosureMirror closure) : super(closure.function) {
+    this.closure = closure;
+  }
+
+  dynamic invoke(List<dynamic> invokeParameters) {
+    return closure.apply(invokeParameters).reflectee;
+  }
+}
+/**
+ * Wrapper for a provided class method
+ */
+class RestClassMethod extends AbstractRestMethod {
+  MethodMirror method;
+  InstanceMirror classInstance;
+
+  RestClassMethod(MethodMirror method, [this.classInstance]) : super(method) {
+    this.method = method;
+  }
+
+  dynamic invoke(List<dynamic> invokeParameters) {
+    ClassMirror owningClass = method.owner;
+    if (method.isStatic) {
+      return owningClass.invoke(method.simpleName, invokeParameters).reflectee;
+    } else {
+      InstanceMirror classInstance = owningClass.newInstance(new Symbol(""), []);
+      return classInstance.invoke(method.simpleName, invokeParameters).reflectee;
+    }
+  }
+}
+
+class MethodParameter {
+  ParameterMirror parameterMirror;
+  Set<InstanceMirror> restAnnotations;
+  String pathParamName;
+  bool isRequestBodyParameter = false;
+  bool isHttpRequestParameter = false;
+
+  MethodParameter(this.parameterMirror) {
+    restAnnotations = new Set<InstanceMirror>();
+    isHttpRequestParameter = parameterMirror.type == reflectType(HttpRequest);
+    _extractRestAnnotations();
+  }
+
+  void _extractRestAnnotations() {
+    // Only add rest relevant annotation
+    parameterMirror.metadata.forEach((currentAnnotationMirror) {
+      if (currentAnnotationMirror.type == reflectType(RequestBody)) {
+        isRequestBodyParameter = true;
+        restAnnotations.add(currentAnnotationMirror);
+      } else if (currentAnnotationMirror.type == reflectType(PathParam)) {
+        // Store name of PathParam for later use
+        pathParamName = currentAnnotationMirror.getField(#name).reflectee;
+        restAnnotations.add(currentAnnotationMirror);
+      }
+    });
   }
 }

@@ -100,6 +100,11 @@ class RestClassParamAnnotation {
     return new TestObject(id, null);
   }
 
+  @RestMethod("testAnnotationAndString{?name}", HttpMethod.get)
+  TestObject testAnnotationAndString(@PathParam() String id, @PathParam("nameAnnotation") String name) {
+    return new TestObject(id, name);
+  }
+
   @RestMethod("testParamSameName", HttpMethod.get)
   TestObject testParamSameName(@PathParam("id") String id) {
     return new TestObject(id, null);
