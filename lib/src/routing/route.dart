@@ -42,31 +42,33 @@ class RestPath {
    */
   void _extractParameters(List<String> pathElements) {
     for (int i = 0; i < pathElements.length; i++) {
-      if (pathElements[i].contains("{")) {
-        List<String> allElements = pathElements[i].split(new RegExp("\[{.\}]")).where((s) => s.isNotEmpty).toList();
-        // In case of query parameters some string needs to be ajusted
-        if (pathElements[i].contains("?")) {
-          String oldPathElement = pathElements[i];
-          // Replace element with queryParameters by element (e.g.../test{?id}{?name} -> test)
-          // Case /{?id} --> last element not a path element
-          if (allElements[0].contains("?")) {
-            pathElements.removeAt(i);
-          } else {
-            // Case /{id}{?name}
-            if (oldPathElement[0] == "{") {
-              pathElements[i] = oldPathElement;
-              parameters[i] = new Set.from([allElements[0]]);
-              // Case ../test{?id}
-            } else {
-              pathElements[i] = allElements[0];
-            }
-          }
-          for (String currentElement in allElements.sublist(1)) {
-            queryParameters.add(currentElement.replaceAll("?", ""));
-          }
-        } else {
-          parameters[i] = new Set.from(allElements);
+      List<String> elements = new List<String>();
+      RegExp exp = new RegExp(r"(\{\?\w+\})");
+      Iterable<Match> matcher = exp.allMatches(pathElements[i]);
+      if (matcher.isNotEmpty) {
+        for (Match currentMatch in matcher) {
+          String currentMatcherElement = currentMatch.group(0);
+          // Extract value {?id} --> id
+          elements.add(currentMatcherElement.substring(2, currentMatcherElement.length - 1));
         }
+        // Remove query params from last element
+        pathElements[i] = pathElements[i].split(new RegExp(r"(\{\?\w+\})"))[0];
+        queryParameters.addAll(elements);
+      }
+      elements.clear();
+      // Check if last element is an url param
+      exp = new RegExp(r"(\{\w+\})");
+      matcher = exp.allMatches(pathElements[i]);
+      if (matcher.isNotEmpty) {
+        for (Match currentMatch in matcher) {
+          String currentMatcherElement = currentMatch.group(0);
+          elements.add(currentMatcherElement.substring(1, currentMatcherElement.length - 1));
+        }
+        parameters[i] = new Set.from(elements);
+      }
+      // Remove element if last element contained just query params
+      if (pathElements[i].isEmpty) {
+        pathElements.removeAt(i);
       }
     }
   }
