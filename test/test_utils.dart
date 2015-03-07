@@ -3,6 +3,8 @@ library restframework.router.test;
 import "package:unittest/unittest.dart";
 import "dart:convert";
 import "package:restFramework/src/routing/annotation.dart";
+import "package:restFramework/src/utils/enums.dart";
+import "dart:io";
 
 /**
  * Object for testing object parsing
@@ -51,7 +53,6 @@ class TestObject implements Matcher{
 
   noSuchMethod(i) => super.noSuchMethod(i);
 }
-
 /**
  * Test class for testing method passing (Closures)
  */
@@ -69,3 +70,82 @@ class TestRestClass {
 TestObject performGlobal(@RequestBody() TestObject object) {
   return object;
 }
+
+@RestResource("/")
+class RestClassAnnotations {
+
+  @RestMethod("test", HttpMethod.get)
+  void testGet() {
+
+  }
+
+  @RestMethod("testParams{?id}{?name}", HttpMethod.get)
+  TestObject testGetWithParams(String id, String name) {
+    return new TestObject(id, name);
+  }
+
+  @RestMethod("{id}/testUrlParams", HttpMethod.get)
+  TestObject testGetWithUrlParams(String id) {
+    return new TestObject(id, null);
+  }
+
+  @RestMethod("{id}/testUrlAndPathParams{?name}", HttpMethod.get)
+  TestObject testGetWithUrlAndPathParams(String id, String name) {
+    return new TestObject(id, name);
+  }
+
+  @RestMethod("test", HttpMethod.post)
+  TestObject testPost(@RequestBody() TestObject object) {
+    return object;
+  }
+
+  @RestMethod("test", HttpMethod.put)
+  TestObject testPut(HttpRequest request, @RequestBody() TestObject object) {
+    request.response.statusCode = HttpStatus.CREATED;
+    return object;
+  }
+
+  @RestMethod("test/{id}", HttpMethod.delete)
+  void testDelete(String id) {
+
+  }
+
+}
+
+@RestResource("/paramAnnotation/")
+class RestClassParamAnnotation {
+
+  @RestMethod("testNoName", HttpMethod.get)
+  TestObject testNoName(@PathParam() String id) {
+    return new TestObject(id, null);
+  }
+
+  @RestMethod("testAnnotationAndString{?name}", HttpMethod.get)
+  TestObject testAnnotationAndString(@PathParam() String id, @PathParam("nameAnnotation") String name) {
+    return new TestObject(id, name);
+  }
+
+  @RestMethod("testParamSameName", HttpMethod.get)
+  TestObject testParamSameName(@PathParam("id") String id) {
+    return new TestObject(id, null);
+  }
+
+  @RestMethod("testParamDifferentName", HttpMethod.get)
+  TestObject testParamDifferentName(@PathParam("myId") String idOfObject) {
+    return new TestObject(idOfObject, null);
+  }
+
+  @RestMethod("testParamNotProvided", HttpMethod.get)
+  TestObject testParamNotProvided(@PathParam("Id") String id) {
+    return new TestObject(id, null);
+  }
+
+  @RestMethod("testParamMixed", HttpMethod.post)
+  TestObject testParamMixed(@PathParam("id") String id, int value, @RequestBody() TestObject object) {
+    object.id = id;
+    object.value = value;
+    return object;
+  }
+
+}
+

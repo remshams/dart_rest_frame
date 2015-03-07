@@ -2,6 +2,7 @@ library restframework.router;
 
 import "package:restFramework/src/utils/enums.dart";
 import "package:restFramework/src/routing/route.dart";
+import "package:restFramework/src/routing/routing.dart" as routing;
 import "dart:io";
 import 'dart:mirrors';
 import "dart:convert";
@@ -25,20 +26,59 @@ class Router {
     _path = _createPath(path);
   }
 
+  Router.fromAnnotation() {
+    List<ClassMirror> restResourceClasses = routing.retrieveRestClassesForIsolate();
+    restResourceClasses.forEach((currentRestClass) {
+      currentRestClass.metadata.forEach((currentMetaData) {
+        if (currentMetaData.type == reflectClass(RestResource)) {
+          _createRoutesFromRestClass(currentRestClass, currentMetaData.getField(#path).reflectee);
+        }
+      });
+    });
+  }
+
+  /**
+   * Creates routes from restClass
+   */
+  void _createRoutesFromRestClass(ClassMirror restClass, String rootPath) {
+    Iterable<DeclarationMirror> restMethods = routing.retrieveRestMethods(restClass);
+    restMethods.forEach((method) {
+      method.metadata.forEach((methodAnnotation) {
+        String path = methodAnnotation.getField(#path).reflectee;
+        HttpMethod httpMethod = methodAnnotation.getField(#method).reflectee;
+        switch (httpMethod) {
+          case HttpMethod.get:
+            _getRoutes.add(new Route.fromRestClass(_createPath(rootPath + path), method));
+            break;
+          case HttpMethod.put:
+            _putRoutes.add(new Route.fromRestClass(_createPath(rootPath + path), method));
+            break;
+          case HttpMethod.post:
+            _postRoutes.add(new Route.fromRestClass(_createPath(rootPath + path), method));
+            break;
+          case HttpMethod.delete:
+            _deleteRoutes.add(new Route.fromRestClass(_createPath(rootPath + path), method));
+            break;
+          default:
+        }
+      });
+    });
+  }
+
   void get(String path, Function callBack) {
-    _getRoutes.add(new Route(_createPath(_path.path + path), callBack));
+    _getRoutes.add(new Route(_createPath(_path.path + path), (reflect(callBack) as ClosureMirror)));
   }
 
   void put(String path, Function callBack) {
-    _putRoutes.add(new Route(_createPath(_path.path + path), callBack));
+    _putRoutes.add(new Route(_createPath(_path.path + path), (reflect(callBack) as ClosureMirror)));
   }
 
   void post(String path, Function callBack) {
-    _postRoutes.add(new Route(_createPath(_path.path + path), callBack));
+    _postRoutes.add(new Route(_createPath(_path.path + path), (reflect(callBack) as ClosureMirror)));
   }
 
   void delete(String path, Function callBack) {
-    _deleteRoutes.add(new Route(_createPath(_path.path + path), callBack));
+    _deleteRoutes.add(new Route(_createPath(_path.path + path), (reflect(callBack) as ClosureMirror)));
   }
 
   Router child(String path) {
@@ -55,12 +95,14 @@ class Router {
    * Get route for request
    */
   Route _registeredRoute(HttpMethod method, Uri requestUri) {
-    List<String> routeElements = _path.pathSegments;
-    List<String> pathElements = requestUri.pathSegments;
     // Number of elements in request must match router path
-    for (int i = 0; i < routeElements.length; i++) {
-      if (routeElements[i].isNotEmpty && pathElements[i] == null || routeElements[i] != pathElements[i]) {
-        return null;
+    if (_path != null) {
+      List<String> routeElements = _path.pathSegments;
+      List<String> pathElements = requestUri.pathSegments;
+      for (int i = 0; i < routeElements.length; i++) {
+        if (routeElements[i].isNotEmpty && pathElements[i] == null || routeElements[i] != pathElements[i]) {
+          return null;
+        }
       }
     }
     Route matchingRoute;
@@ -74,16 +116,16 @@ class Router {
     // Check routes of methods
     switch (method) {
       case HttpMethod.get:
-        matchingRoute = _retrieveRouteRegisteredForHttpMethod(_getRoutes, requestUri);
+        matchingRoute = routing.retrieveRouteRegisteredForHttpMethod(_getRoutes, requestUri);
         break;
       case HttpMethod.put:
-        matchingRoute = _retrieveRouteRegisteredForHttpMethod(_putRoutes, requestUri);
+        matchingRoute = routing.retrieveRouteRegisteredForHttpMethod(_putRoutes, requestUri);
         break;
       case HttpMethod.post:
-        matchingRoute = _retrieveRouteRegisteredForHttpMethod(_postRoutes, requestUri);
+        matchingRoute = routing.retrieveRouteRegisteredForHttpMethod(_postRoutes, requestUri);
         break;
       case HttpMethod.delete:
-        matchingRoute = _retrieveRouteRegisteredForHttpMethod(_deleteRoutes, requestUri);
+        matchingRoute = routing.retrieveRouteRegisteredForHttpMethod(_deleteRoutes, requestUri);
         break;
       default:
 
@@ -119,40 +161,6 @@ class Router {
     request.response.statusCode = HttpStatus.OK;
     return _invokeCallBack(request, route, paramsInRequest);
 
-  }
-
-  /**
-   * Retrieve route for request and request method
-   */
-  Route _retrieveRouteRegisteredForHttpMethod(List<Route> routes, Uri requestUri) {
-    for (int i = 0; i < routes.length; i++) {
-      if(_isPathMatching(routes[i].path, requestUri)) {
-        return routes[i];
-      }
-    }
-    return null;
-  }
-
-  /**
-   * Checks if paths are matching
-   */
-  bool _isPathMatching(RestPath basePath, Uri comparePath) {
-    List<String> base = basePath.pathSegments;
-    List<String> compare = comparePath.pathSegments;
-    if (base.length != compare.length) {
-      return false;
-    }
-    for (int i = 0; i < base.length; i ++) {
-      if (compare[i].isEmpty) {
-        return false;
-      // If path elements are not equal check if it is a path parameter
-      } else if (compare[i] != base[i]) {
-        if (basePath.parameters[i] == null) {
-          return false;
-        }
-      }
-    }
-    return true;
   }
 
   /**
@@ -195,10 +203,8 @@ class Router {
    * Invokes the callback method
    */
   Future _invokeCallBack(HttpRequest request, Route route, Map<String, String> paramsInRequest) {
-    ClosureMirror closure = reflect(route.callBack);
     List<Future<dynamic>> paramProcessingFutures = new List<dynamic>();
-    MethodMirror func = closure.function;
-    for (ParameterMirror currentParameter in func.parameters) {
+    for (MethodParameter currentParameter in route.method.parameters) {
       paramProcessingFutures.add(_assignValuesToFunctionParameters(currentParameter, paramsInRequest, request));
     }
     return Future.wait(paramProcessingFutures).then((futureResults) {
@@ -206,59 +212,37 @@ class Router {
       futureResults.forEach((result) {
         invokeParameters.add(result);
       });
-      InstanceMirror closureReturn = closure.apply(invokeParameters);
-      _processResponse(request, closureReturn);
+      dynamic callBackReturn = route.method.invoke(invokeParameters);
+      _processResponse(request, callBackReturn);
     });
 
   }
 
   /**
-   * Extract RestFramework Annotation of function parameter
-   */
-  Set<TypeMirror> _retrieveRestFrameworkFunctionAnnotations(ParameterMirror parameterMirror) {
-    Set<TypeMirror> annotationTypes = new Set<TypeMirror>();
-    for (InstanceMirror currentAnnotaion in parameterMirror.metadata) {
-      if (currentAnnotaion.type == reflectType(RequestBody)) {
-        annotationTypes.add(currentAnnotaion.type);
-      }
-    }
-    return annotationTypes;
-  }
-
-  /**
    * Assigns values from rest request to function parameters
    */
-  Future<dynamic> _assignValuesToFunctionParameters(ParameterMirror functionParameter, Map<String, String> paramsInRequest, HttpRequest request) {
+  Future<dynamic> _assignValuesToFunctionParameters(MethodParameter functionParameter, Map<String, String> paramsInRequest, HttpRequest request) {
     Completer completer = new Completer();
     // rest framework annotations
-    Set<TypeMirror> typeAnnotations = _retrieveRestFrameworkFunctionAnnotations(functionParameter);
-    // In case function parameter has annotations, process them
-    if (typeAnnotations.isNotEmpty) {
-      _processAnnotations(functionParameter, typeAnnotations, request, completer);
+    if (functionParameter.isHttpRequestParameter) {
+      completer.complete(request);
+    } else if (functionParameter.isRequestBodyParameter) {
+      UTF8.decodeStream(request).then((body) {
+        completer.complete(_parseTypeFromString(functionParameter.parameterMirror, body));
+      });
     } else {
-      // Special handling for request object
-      if (functionParameter.type == reflectType(HttpRequest)) {
-        completer.complete(request);
-      // In case of untyped parameter pass string
-      } else if (functionParameter.type == reflectType(dynamic)) {
-        dynamic paramValue = paramsInRequest[MirrorSystem.getName(functionParameter.simpleName)];
+      String funcParameterName = functionParameter.pathParamName;
+      if (funcParameterName == null || funcParameterName.isEmpty) {
+        funcParameterName = MirrorSystem.getName(functionParameter.parameterMirror.simpleName);
+      }
+      dynamic paramValue = paramsInRequest[funcParameterName];
+      if (functionParameter.parameterMirror.type == reflectType(dynamic)) {
         completer.complete(paramValue);
       } else {
-        dynamic paramValue = paramsInRequest[MirrorSystem.getName(functionParameter.simpleName)];
-        completer.complete(_parseTypeFromString(functionParameter, paramValue));
+        completer.complete(_parseTypeFromString(functionParameter.parameterMirror, paramValue));
       }
     }
     return completer.future;
-  }
-
-  void _processAnnotations(ParameterMirror functionParameter, Set<TypeMirror> annotations, HttpRequest request, Completer completer) {
-    for (TypeMirror currentAnnotation in annotations) {
-      if (currentAnnotation == reflectType(RequestBody)) {
-        UTF8.decodeStream(request).then((body) {
-          completer.complete(_parseTypeFromString(functionParameter, body));
-        });
-      }
-    }
   }
 
   /**
@@ -282,8 +266,8 @@ class Router {
       return result;
   }
 
-  void _processResponse(HttpRequest request, InstanceMirror invokeResult) {
-    String json = JSON.encode(invokeResult.reflectee);
+  void _processResponse(HttpRequest request, dynamic invokeResult) {
+    String json = JSON.encode(invokeResult);
     request.response.write(json);
     request.response.close();
   }
