@@ -1,10 +1,9 @@
-library restframework.router.test;
+library rest_frame.router.test;
 
 import "dart:io";
-import "package:restFramework/src/routing/router.dart";
+import "package:rest_frame/rest_frame.dart";
 import "package:unittest/unittest.dart";
-import "../test_utils.dart";
-import "package:restFramework/src/routing/annotation.dart";
+import "test_utils.dart";
 import "package:http/http.dart" as http;
 import "dart:convert";
 

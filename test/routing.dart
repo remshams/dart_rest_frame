@@ -1,10 +1,9 @@
 import "package:unittest/unittest.dart";
-import "package:restFramework/src/routing/router.dart";
+import "package:rest_frame/rest_frame.dart";
 import "dart:io";
 import "dart:convert";
 import "package:http/http.dart" as http;
-import "../test_utils.dart";
-import 'dart:mirrors';
+import "test_utils.dart";
 
 
 
@@ -128,7 +127,7 @@ void defineTests() {
 
     });
 
-    test("RoutesSeverIRLParamsMappedToOneSegment", () {
+    test("RoutesSeverURLParamsMappedToOneSegment", () {
       router = new Router("/stocks");
       TestObject toCall(HttpRequest request, String id, String name) {
         return new TestObject(id, name);

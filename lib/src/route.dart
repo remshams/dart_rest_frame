@@ -1,9 +1,9 @@
-library restframework.route;
+library rest_frame.route;
 
-import "package:restFramework/src/utils/utils.dart";
+import "package:rest_frame/src/utils/utils.dart";
 import "dart:io";
 import 'dart:mirrors';
-import "package:restFramework/src/routing/annotation.dart";
+import "package:rest_frame/src/annotations/annotation.dart";
 
 class Route {
   RestPath path;

@@ -1,8 +1,8 @@
-library restframework.routing;
+library rest_frame.routing;
 
-import "package:restFramework/src/routing/route.dart";
+import "package:rest_frame/src/route.dart";
 import "dart:mirrors";
-import "package:restFramework/src/routing/annotation.dart";
+import "package:rest_frame/src/annotations/annotation.dart";
 
 /**
  * Retrieve route for request and request method

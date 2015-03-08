@@ -1,9 +1,8 @@
-library restframework.router.test;
+library rest_frame.router.test;
 
 import "package:unittest/unittest.dart";
 import "dart:convert";
-import "package:restFramework/src/routing/annotation.dart";
-import "package:restFramework/src/utils/enums.dart";
+import "package:rest_frame/rest_frame.dart";
 import "dart:io";
 
 /**

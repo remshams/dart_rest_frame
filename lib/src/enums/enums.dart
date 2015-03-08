@@ -1,4 +1,4 @@
-library restframework.enums;
+library rest_frame.enums;
 
 
 

@@ -1,6 +1,6 @@
-library restframework.annotation;
+library rest_frame.annotation;
 
-import "package:restFramework/src/utils/enums.dart";
+import "package:rest_frame/src/enums/enums.dart";
 
 class RequestBody {
 

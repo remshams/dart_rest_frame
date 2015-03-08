@@ -1,12 +1,12 @@
-library restframework.router;
+library rest_frame.router;
 
-import "package:restFramework/src/utils/enums.dart";
-import "package:restFramework/src/routing/route.dart";
-import "package:restFramework/src/routing/routing.dart" as routing;
+import "package:rest_frame/src/enums/enums.dart";
+import "package:rest_frame/src/route.dart";
+import "package:rest_frame/src/routing.dart" as routing;
 import "dart:io";
 import 'dart:mirrors';
 import "dart:convert";
-import "package:restFramework/src/routing/annotation.dart";
+import "package:rest_frame/src/annotations/annotation.dart";
 import "dart:async";
 
 class Router {
