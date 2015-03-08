@@ -12,7 +12,8 @@ import 'dart:mirrors';
 
 
 void defineTests() {
-  String host = InternetAddress.LOOPBACK_IP_V4.host;
+  InternetAddress hostServer = InternetAddress.LOOPBACK_IP_V4;
+  String host = hostServer.host;
   int port = 9000;
   HttpServer serverInstance;
   Router router;

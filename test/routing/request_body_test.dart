@@ -10,7 +10,8 @@ import "dart:convert";
 
 
 void defineTests() {
-  String host = InternetAddress.LOOPBACK_IP_V4.host;
+  InternetAddress hostServer = InternetAddress.LOOPBACK_IP_V4;
+  String host = hostServer.host;
   int port = 9000;
   HttpServer serverInstance;
   Router router;
@@ -18,7 +19,7 @@ void defineTests() {
 
   setUp(() {
     print("Server start");
-    HttpServer.bind(host, port).then((HttpServer server) {
+    HttpServer.bind(hostServer, port).then((HttpServer server) {
       serverInstance = server;
       server.listen((HttpRequest request) {
         router.route(request);
