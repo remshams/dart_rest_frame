@@ -68,6 +68,14 @@ void defineTests() {
         expect(result, equals(new TestObject("12", "test")));
       }));
     });
+
+    test("Empty body", () {
+      router = new Router.fromAnnotation();
+      http.post("http://$host:$port/testEmptyBody?name=test").then(expectAsync((response) {
+        assert(response != null);
+        expect(response.statusCode, HttpStatus.BAD_REQUEST);
+      }));
+    });
   });
 
   group("PathParams Routes", () {
@@ -125,6 +133,16 @@ void defineTests() {
         expect(response.statusCode, HttpStatus.OK);
         TestObject result = new TestObject.fromJson(JSON.decode(response.body));
         expect(result, equals(new TestObject("12", "right")));
+      }));
+    });
+
+    test("PathParam - Duplicate Annotation", () {
+      router = new Router.fromAnnotation();
+      http.get("http://$host:$port/paramAnnotation/testParamDuplicate?id=12&id2=16").then(expectAsync((response) {
+        assert(response != null);
+        expect(response.statusCode, HttpStatus.OK);
+        TestObject result = new TestObject.fromJson(JSON.decode(response.body));
+        expect(result, equals(new TestObject("16", null)));
       }));
     });
   });

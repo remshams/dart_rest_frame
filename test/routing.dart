@@ -20,7 +20,7 @@ void defineTests() {
 
   setUp(()  {
     print("Server start");
-    HttpServer.bind(host, port).then((HttpServer server) {
+    HttpServer.bind(hostServer, port).then((HttpServer server) {
       serverInstance = server;
       server.listen((HttpRequest request) {
         router.route(request);
@@ -210,6 +210,23 @@ void defineTests() {
         expect(response.statusCode, HttpStatus.OK);
       }));
     });
+    test("UrlParams in root path", () {
+      router = new Router("/stocks/{id}{?value}");
+      Router child = router.child("");
+      TestObject toCall(String id, String name) {
+        return new TestObject(id, name);
+      }
+      child.get("/bonds{?name}", toCall);
+      http.get("http://$host:$port/stocks/12/bonds?name=right").then(expectAsync((response) {
+        assert(response != null);
+        expect(response.statusCode, HttpStatus.OK);
+        expect(new TestObject.fromJson(JSON.decode(response.body)), equals(new TestObject("12", "right")));
+      }));
+      http.get("http://$host:$port/stocks/14?value=test/bonds?name=wrong").then(expectAsync((response) {
+        assert(response != null);
+        expect(response.statusCode, HttpStatus.NOT_FOUND);
+      }));
+    });
 
   });
 
@@ -306,6 +323,16 @@ void defineTests() {
         expect(response.statusCode, HttpStatus.INTERNAL_SERVER_ERROR);
       }));
     });
+    test("400", () {
+      router = new Router("");
+      TestObject toCall(HttpRequest request, id, name) {
+        return name;
+      };
+      router.get("/test{?id}{?name}", toCall);
+      http.get("http://$host:$port/test?id=12&name=test").then(expectAsync((response) {
+        expect(response.statusCode, HttpStatus.BAD_REQUEST);
+      }));
+    });
     test("MethodCode", () {
       router = new Router("");
       router.get("/test", (HttpRequest request) {request.response.statusCode = HttpStatus.BAD_REQUEST;});
@@ -397,6 +424,24 @@ void defineTests() {
         expect(response.statusCode, HttpStatus.OK);
         TestObject result = new TestObject.fromJson(JSON.decode(response.body));
         expect(result, equals(new TestObject("12", "test")));
+      }));
+    });
+  });
+
+  group("miscellaneous", () {
+    test("Reponse already closed", () {
+      router = new Router("");
+      TestObject toCall(HttpRequest request, id, name) {
+        assert(request != null);
+        request.response.write(JSON.encode(new TestObject("16", "test2")));
+        request.response.close();
+        return new TestObject("12", "test");
+      };
+      router.get("/test", toCall);
+      http.get("http://$host:$port/test").then(expectAsync((response) {
+        assert(response != null);
+        expect(response.statusCode, HttpStatus.OK);
+        expect(new TestObject.fromJson(JSON.decode(response.body)), equals(new TestObject("16", "test2")));
       }));
     });
   });

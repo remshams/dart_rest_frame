@@ -91,16 +91,6 @@ class Router {
    * Get route for request
    */
   Route _registeredRoute(HttpMethod method, Uri requestUri) {
-    // Number of elements in request must match router path
-    if (_path != null) {
-      List<String> routeElements = _path.pathSegments;
-      List<String> pathElements = requestUri.pathSegments;
-      for (int i = 0; i < routeElements.length; i++) {
-        if (routeElements[i].isNotEmpty && pathElements[i] == null || routeElements[i] != pathElements[i]) {
-          return null;
-        }
-      }
-    }
     Route matchingRoute;
     // Check childs first
     for (int i = 0; i < _childs.length; i++) {
@@ -138,6 +128,9 @@ class Router {
       Route route = _registeredRoute(method, request.uri);
       return _validateRequest(request, route);
     }).catchError((e) {
+      request.response.statusCode = HttpStatus.BAD_REQUEST;
+      request.response.close();
+    }, test : (e) => e is TypeError).catchError((e) {
       request.response.statusCode = HttpStatus.INTERNAL_SERVER_ERROR;
       request.response.close();
     });
@@ -224,7 +217,11 @@ class Router {
       completer.complete(request);
     } else if (functionParameter.isRequestBodyParameter) {
       UTF8.decodeStream(request).then((body) {
-        completer.complete(_parseTypeFromString(functionParameter.parameterMirror, body));
+        if (functionParameter.parameterMirror.type == reflectType(dynamic)) {
+          completer.complete(JSON.decode(body));
+        } else {
+          completer.complete(_parseTypeFromString(functionParameter.parameterMirror, body));
+        }
       });
     } else {
       String funcParameterName = functionParameter.pathParamName;
@@ -246,7 +243,7 @@ class Router {
    */
   dynamic _parseTypeFromString(ParameterMirror mirror, String value) {
       var result = value;
-      if (value != null) {
+      if (value != null && value.isNotEmpty) {
         ClassMirror classMirrorOfType = mirror.type;
         if (mirror.type.isSubtypeOf(reflectType(String))) {
           result = value;

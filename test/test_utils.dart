@@ -109,6 +109,16 @@ class RestClassAnnotations {
 
   }
 
+  @RestMethod("testEmptyBody", HttpMethod.post)
+  TestObject testEmptyBody(@RequestBody() TestObject body) {
+    return body;
+  }
+
+  @RestMethod("testNoRequestBodyType", HttpMethod.post)
+  void testNoRequestBodyType(@RequestBody() body) {
+
+  }
+
 }
 
 @RestResource("/paramAnnotation/")
@@ -144,6 +154,11 @@ class RestClassParamAnnotation {
     object.id = id;
     object.value = value;
     return object;
+  }
+
+  @RestMethod("testParamDuplicate", HttpMethod.get)
+  TestObject testParamDuplicate(@PathParam("id") @PathParam("id2") String id) {
+    return new TestObject(id, null);
   }
 
 }

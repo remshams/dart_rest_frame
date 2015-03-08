@@ -84,6 +84,47 @@ void defineTests() {
         expect(response.statusCode, HttpStatus.OK);
       }));
     });
+    test("Get and body", () {
+      router = new Router("");
+      void toCall(HttpRequest request, @RequestBody() String body) {
+        assert(body.isEmpty);
+      };
+      router.get("/test", toCall);
+      http.get("http://$host:$port/test").then(expectAsync((response) {
+        assert(response != null);
+        expect(response.statusCode, HttpStatus.OK);
+      }));
+    });
+    test("Delete and body", () {
+      router = new Router("");
+      void toCall(HttpRequest request, @RequestBody() String body) {
+        assert(body.isEmpty);
+      };
+      router.delete("/test", toCall);
+      http.delete("http://$host:$port/test").then(expectAsync((response) {
+        assert(response != null);
+        expect(response.statusCode, HttpStatus.OK);
+      }));
+    });
+    test("Emtpy body", () {
+      router = new Router("");
+      void toCall(HttpRequest request, @RequestBody() String body) {
+        assert(body.isEmpty);
+      };
+      router.post("/test", toCall);
+      http.post("http://$host:$port/test").then(expectAsync((response) {
+        assert(response != null);
+        expect(response.statusCode, HttpStatus.OK);
+      }));
+    });
+
+    test("No RequestBody Type", () {
+      router = new Router.fromAnnotation();
+      http.post("http://$host:$port/testNoRequestBodyType", body: JSON.encode(new TestObject("12", "test"))).then(expectAsync((response) {
+        assert(response != null);
+        expect(response.statusCode, HttpStatus.OK);
+      }));
+    });
   });
 
 }
