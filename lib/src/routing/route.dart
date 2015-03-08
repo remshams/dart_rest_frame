@@ -10,12 +10,26 @@ class Route {
   Map<HttpHeaders, String> header;
   AbstractRestMethod method;
 
-  Route(this.path, ClosureMirror restClosure) {
+  Route(String path, ClosureMirror restClosure) {
+    this.path = new RestPath(path);
     method = new RestClosure(restClosure);
   }
 
-  Route.fromRestClass(this.path, MethodMirror restMethod) {
+  Route.fromRestClass(String path, MethodMirror restMethod) {
+    this.path = new RestPath(path);
     method = new RestClassMethod(restMethod);
+    _processRestMethodParameters(method.parameters, this.path);
+  }
+
+  /**
+   * Adds queryParameter names from PathParam Annotation to RestPath
+   */
+  void _processRestMethodParameters(List<MethodParameter> methodParameters, RestPath restPath) {
+    for (MethodParameter currentParameter in methodParameters) {
+      if (currentParameter.isPathParam) {
+        restPath.queryParameters.add(currentParameter.pathParamName);
+      }
+    }
   }
 
 }
@@ -136,6 +150,7 @@ class MethodParameter {
   ParameterMirror parameterMirror;
   Set<InstanceMirror> restAnnotations;
   String pathParamName;
+  bool isPathParam = false;
   bool isRequestBodyParameter = false;
   bool isHttpRequestParameter = false;
 
@@ -152,6 +167,7 @@ class MethodParameter {
         isRequestBodyParameter = true;
         restAnnotations.add(currentAnnotationMirror);
       } else if (currentAnnotationMirror.type == reflectType(PathParam)) {
+        isPathParam = true;
         // Store name of PathParam for later use
         pathParamName = currentAnnotationMirror.getField(#name).reflectee;
         restAnnotations.add(currentAnnotationMirror);

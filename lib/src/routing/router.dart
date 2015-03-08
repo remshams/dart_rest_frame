@@ -23,7 +23,7 @@ class Router {
     if (parent != null) {
       _parent = parent;
     }
-    _path = _createPath(path);
+    _path = new RestPath(path);
   }
 
   Router.fromAnnotation() {
@@ -48,16 +48,16 @@ class Router {
         HttpMethod httpMethod = methodAnnotation.getField(#method).reflectee;
         switch (httpMethod) {
           case HttpMethod.get:
-            _getRoutes.add(new Route.fromRestClass(_createPath(rootPath + path), method));
+            _getRoutes.add(new Route.fromRestClass(rootPath + path, method));
             break;
           case HttpMethod.put:
-            _putRoutes.add(new Route.fromRestClass(_createPath(rootPath + path), method));
+            _putRoutes.add(new Route.fromRestClass(rootPath + path, method));
             break;
           case HttpMethod.post:
-            _postRoutes.add(new Route.fromRestClass(_createPath(rootPath + path), method));
+            _postRoutes.add(new Route.fromRestClass(rootPath + path, method));
             break;
           case HttpMethod.delete:
-            _deleteRoutes.add(new Route.fromRestClass(_createPath(rootPath + path), method));
+            _deleteRoutes.add(new Route.fromRestClass(rootPath + path, method));
             break;
           default:
         }
@@ -66,29 +66,25 @@ class Router {
   }
 
   void get(String path, Function callBack) {
-    _getRoutes.add(new Route(_createPath(_path.path + path), (reflect(callBack) as ClosureMirror)));
+    _getRoutes.add(new Route(_path.path + path, (reflect(callBack) as ClosureMirror)));
   }
 
   void put(String path, Function callBack) {
-    _putRoutes.add(new Route(_createPath(_path.path + path), (reflect(callBack) as ClosureMirror)));
+    _putRoutes.add(new Route(_path.path + path, (reflect(callBack) as ClosureMirror)));
   }
 
   void post(String path, Function callBack) {
-    _postRoutes.add(new Route(_createPath(_path.path + path), (reflect(callBack) as ClosureMirror)));
+    _postRoutes.add(new Route(_path.path + path, (reflect(callBack) as ClosureMirror)));
   }
 
   void delete(String path, Function callBack) {
-    _deleteRoutes.add(new Route(_createPath(_path.path + path), (reflect(callBack) as ClosureMirror)));
+    _deleteRoutes.add(new Route(_path.path + path, (reflect(callBack) as ClosureMirror)));
   }
 
   Router child(String path) {
     Router childRouter = new Router(_path.path + path, this);
     this._childs.add(childRouter);
     return childRouter;
-  }
-
-  RestPath _createPath(String path) {
-    return new RestPath(path);
   }
 
   /**
