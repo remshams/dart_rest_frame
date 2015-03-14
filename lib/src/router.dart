@@ -2,7 +2,7 @@ library rest_frame.router;
 
 import "package:rest_frame/src/enums/enums.dart";
 import "package:rest_frame/src/route.dart";
-import "package:rest_frame/src/routing.dart" as routing;
+import "package:rest_frame/src/utils/routing.dart" as routing;
 import "dart:io";
 import 'dart:mirrors';
 import "dart:convert";
