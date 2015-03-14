@@ -323,16 +323,6 @@ void defineTests() {
         expect(response.statusCode, HttpStatus.INTERNAL_SERVER_ERROR);
       }));
     });
-    test("400", () {
-      router = new Router("");
-      TestObject toCall(HttpRequest request, id, name) {
-        return name;
-      };
-      router.get("/test{?id}{?name}", toCall);
-      http.get("http://$host:$port/test?id=12&name=test").then(expectAsync((response) {
-        expect(response.statusCode, HttpStatus.BAD_REQUEST);
-      }));
-    });
     test("MethodCode", () {
       router = new Router("");
       router.get("/test", (HttpRequest request) {request.response.statusCode = HttpStatus.BAD_REQUEST;});
@@ -446,7 +436,7 @@ void defineTests() {
     });
     test("Error Handler", () {
       router = new Router("");
-      router.get("/test", () {throw new Exception();});
+      router.get("/test", () {throw new TypeError();});
       router.registerErrorHandler(new TestErrorHandler());
       http.get("http://$host:$port/test").then(expectAsync((response) {
         expect(response.statusCode, HttpStatus.BAD_REQUEST);

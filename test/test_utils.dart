@@ -56,7 +56,11 @@ class TestObject implements Matcher{
 class TestErrorHandler extends ErrorHandler {
 
   void handleError(HttpRequest request, e) {
-    request.response.statusCode = HttpStatus.BAD_REQUEST;
+    if (e is TypeError) {
+      request.response.statusCode = HttpStatus.BAD_REQUEST;
+    } else {
+      request.response.statusCode = HttpStatus.INTERNAL_SERVER_ERROR;
+    }
     request.response.write("Failure");
     request.response.close();
   }

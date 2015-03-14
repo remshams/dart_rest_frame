@@ -145,9 +145,6 @@ class Router {
       Route route = _registeredRoute(method, request.uri);
       return _validateRequest(request, route);
     }).catchError((e) {
-      request.response.statusCode = HttpStatus.BAD_REQUEST;
-      request.response.close();
-    }, test : (e) => e is TypeError).catchError((e) {
       request.response.statusCode = HttpStatus.INTERNAL_SERVER_ERROR;
       propagateError(request, e);
       request.response.close();

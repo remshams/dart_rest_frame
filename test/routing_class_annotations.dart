@@ -68,14 +68,6 @@ void defineTests() {
         expect(result, equals(new TestObject("12", "test")));
       }));
     });
-
-    test("Empty body", () {
-      router = new Router.fromAnnotation();
-      http.post("http://$host:$port/testEmptyBody?name=test").then(expectAsync((response) {
-        assert(response != null);
-        expect(response.statusCode, HttpStatus.BAD_REQUEST);
-      }));
-    });
   });
 
   group("PathParams Routes", () {
