@@ -52,6 +52,17 @@ class TestObject implements Matcher{
 
   noSuchMethod(i) => super.noSuchMethod(i);
 }
+
+class TestErrorHandler extends ErrorHandler {
+
+  void handleError(HttpRequest request, e) {
+    request.response.statusCode = HttpStatus.BAD_REQUEST;
+    request.response.write("Failure");
+    request.response.close();
+  }
+}
+
+
 /**
  * Test class for testing method passing (Closures)
  */

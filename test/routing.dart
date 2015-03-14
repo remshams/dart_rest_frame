@@ -444,6 +444,15 @@ void defineTests() {
         expect(new TestObject.fromJson(JSON.decode(response.body)), equals(new TestObject("16", "test2")));
       }));
     });
+    test("Error Handler", () {
+      router = new Router("");
+      router.get("/test", () {throw new Exception();});
+      router.registerErrorHandler(new TestErrorHandler());
+      http.get("http://$host:$port/test").then(expectAsync((response) {
+        expect(response.statusCode, HttpStatus.BAD_REQUEST);
+        expect(response.body, equals("Failure"));
+      }));
+    });
   });
 }
 

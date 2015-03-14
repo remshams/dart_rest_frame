@@ -18,6 +18,7 @@ class Router {
   List<Route> _putRoutes = new List<Route>();
   List<Route> _postRoutes = new List<Route>();
   List<Route> _deleteRoutes = new List<Route>();
+  List<ErrorHandler> _errorHandler = new List<ErrorHandler>();
 
   Router(String path, [Router parent]) {
     if (parent != null) {
@@ -88,6 +89,22 @@ class Router {
   }
 
   /**
+   * Registers an error handler
+   */
+  void registerErrorHandler(ErrorHandler handler) {
+    _errorHandler.add(handler);
+  }
+
+  /**
+   * Propagates error to error handlers
+   */
+  void propagateError(HttpRequest request, e) {
+    for (ErrorHandler handler in _errorHandler) {
+      handler.handleError(request, e);
+    }
+  }
+
+  /**
    * Get route for request
    */
   Route _registeredRoute(HttpMethod method, Uri requestUri) {
@@ -132,6 +149,7 @@ class Router {
       request.response.close();
     }, test : (e) => e is TypeError).catchError((e) {
       request.response.statusCode = HttpStatus.INTERNAL_SERVER_ERROR;
+      propagateError(request, e);
       request.response.close();
     });
   }
@@ -264,6 +282,11 @@ class Router {
     request.response.write(json);
     request.response.close();
   }
+}
+
+abstract class ErrorHandler {
+
+  void handleError(HttpRequest request, e);
 }
 
 
