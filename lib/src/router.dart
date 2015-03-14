@@ -66,22 +66,37 @@ class Router {
     });
   }
 
+  /**
+   * Registers a get method
+   */
   void get(String path, Function callBack) {
     _getRoutes.add(new Route(_path.path + path, (reflect(callBack) as ClosureMirror)));
   }
 
+  /**
+   * Registers a put method
+   */
   void put(String path, Function callBack) {
     _putRoutes.add(new Route(_path.path + path, (reflect(callBack) as ClosureMirror)));
   }
 
+  /**
+   * Registers a post method
+   */
   void post(String path, Function callBack) {
     _postRoutes.add(new Route(_path.path + path, (reflect(callBack) as ClosureMirror)));
   }
 
+  /**
+   * Registers a delete method
+   */
   void delete(String path, Function callBack) {
     _deleteRoutes.add(new Route(_path.path + path, (reflect(callBack) as ClosureMirror)));
   }
 
+  /**
+   * Creates a child router from the current router
+   */
   Router child(String path) {
     Router childRouter = new Router(_path.path + path, this);
     this._childs.add(childRouter);
