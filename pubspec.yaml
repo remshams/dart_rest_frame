@@ -1,10 +1,9 @@
-name: restFramework
+name: rest_frame
 version: 0.0.1
-description: A minimal rest framework
-#author: <your name> <email@example.com>
-#homepage: https://www.example.com
+description: Rest Framework
+author: Mathias Remshardt <mathias.remshardt@icloud.com>
 environment:
   sdk: '>=1.0.0 <2.0.0'
-dependencies:
-  unittest: any
-  mock: any
+dev_dependencies:
+  unittest: ">=0.10.0 <0.12.0"
+  http: ">=0.11.1+1 <0.12.0"

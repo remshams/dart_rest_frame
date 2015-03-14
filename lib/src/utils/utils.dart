@@ -1,4 +1,4 @@
-library restframework.utils;
+library rest_frame.utils;
 
 
 class Utils {
