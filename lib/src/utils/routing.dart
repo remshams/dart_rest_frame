@@ -3,6 +3,7 @@ library rest_frame.routing;
 import "package:rest_frame/src/route.dart";
 import "dart:mirrors";
 import "package:rest_frame/src/annotations/annotation.dart";
+import "package:rest_frame/src/utils/utils.dart";
 
 /**
  * Retrieve route for request and request method
@@ -21,7 +22,10 @@ Route retrieveRouteRegisteredForHttpMethod(List<Route> routes, Uri requestUri) {
  */
 bool _isPathMatching(RestPath basePath, Uri comparePath) {
   List<String> base = basePath.pathSegments;
-  List<String> compare = comparePath.pathSegments;
+  // Path segments of registered routes are stored without empty elements
+  // e.g. in case route contains several slashes (/stocks///bonds)
+  // removeEmptyElementsFromList removes these elements from list
+  List<String> compare = Utils.removeEmptyElementsFromList(comparePath.pathSegments);
   if (base.length != compare.length) {
     return false;
   }
