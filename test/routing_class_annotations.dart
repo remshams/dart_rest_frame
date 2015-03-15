@@ -137,6 +137,22 @@ void defineTests() {
         expect(result, equals(new TestObject("16", null)));
       }));
     });
+
+    test("RestResource - no path parameter", () {
+      router = new Router.fromAnnotation();
+      http.get("http://$host:$port/testResourceNoPath").then(expectAsync((response) {
+        assert(response != null);
+        expect(response.statusCode, HttpStatus.OK);
+      }));
+    });
+
+    test("RestMethod - No path parameter", () {
+      router = new Router.fromAnnotation();
+      http.get("http://$host:$port/testMethodNoPath").then(expectAsync((response) {
+        assert(response != null);
+        expect(response.statusCode, HttpStatus.OK);
+      }));
+    });
   });
 
   group("Rest Methods", () {

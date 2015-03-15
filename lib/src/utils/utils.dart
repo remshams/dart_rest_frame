@@ -16,7 +16,7 @@ class Utils {
   static String combineSegments(List<String> segments) {
     String result = "";
     for (String currentSegment in segments) {
-      if (currentSegment != null) {
+      if (currentSegment != null && currentSegment.isNotEmpty) {
         result += currentSegment;
       }
     }

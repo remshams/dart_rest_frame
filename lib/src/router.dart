@@ -58,16 +58,16 @@ class Router {
         HttpMethod httpMethod = methodAnnotation.getField(#method).reflectee;
         switch (httpMethod) {
           case HttpMethod.get:
-            _getRoutes.add(new Route.fromRestClass(rootPath + path, method));
+            _getRoutes.add(new Route.fromRestClass(Utils.combineSegments([rootPath, path]), method));
             break;
           case HttpMethod.put:
-            _putRoutes.add(new Route.fromRestClass(rootPath + path, method));
+            _putRoutes.add(new Route.fromRestClass(Utils.combineSegments([rootPath, path]), method));
             break;
           case HttpMethod.post:
-            _postRoutes.add(new Route.fromRestClass(rootPath + path, method));
+            _postRoutes.add(new Route.fromRestClass(Utils.combineSegments([rootPath, path]), method));
             break;
           case HttpMethod.delete:
-            _deleteRoutes.add(new Route.fromRestClass(rootPath + path, method));
+            _deleteRoutes.add(new Route.fromRestClass(Utils.combineSegments([rootPath, path]), method));
             break;
           default:
         }
