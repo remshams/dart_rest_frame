@@ -1,7 +1,7 @@
 name: rest_frame
 version: 0.0.1
 description: Rest Framework
-author: Mathias Remshardt <mathias.remshardt@icloud.com>
+author: Mathias Remshardt <remshams@gmail.com>
 environment:
   sdk: '>=1.0.0 <2.0.0'
 dev_dependencies:
