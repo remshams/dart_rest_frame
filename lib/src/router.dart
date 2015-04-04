@@ -8,6 +8,7 @@ import 'dart:mirrors';
 import "dart:convert";
 import "package:rest_frame/src/annotations/annotation.dart";
 import "dart:async";
+import "package:rest_frame/src/utils/utils.dart";
 
 class Router {
 
@@ -20,11 +21,19 @@ class Router {
   List<Route> _deleteRoutes = new List<Route>();
   List<ErrorHandler> _errorHandler = new List<ErrorHandler>();
 
-  Router(String path, [Router parent]) {
-    if (parent != null) {
-      _parent = parent;
+  Router([String path]) {
+    if (path != null) {
+      _path = new RestPath(path);
+    } else {
+      _path= new RestPath("");
     }
-    _path = new RestPath(path);
+  }
+
+  /**
+   * Creates a router with parent
+   */
+  Router._withParent(this._parent, String path) {
+    _path= new RestPath(path);
   }
 
   Router.fromAnnotation() {
@@ -49,16 +58,16 @@ class Router {
         HttpMethod httpMethod = methodAnnotation.getField(#method).reflectee;
         switch (httpMethod) {
           case HttpMethod.get:
-            _getRoutes.add(new Route.fromRestClass(rootPath + path, method));
+            _getRoutes.add(new Route.fromRestClass(Utils.combineSegments([rootPath, path]), method));
             break;
           case HttpMethod.put:
-            _putRoutes.add(new Route.fromRestClass(rootPath + path, method));
+            _putRoutes.add(new Route.fromRestClass(Utils.combineSegments([rootPath, path]), method));
             break;
           case HttpMethod.post:
-            _postRoutes.add(new Route.fromRestClass(rootPath + path, method));
+            _postRoutes.add(new Route.fromRestClass(Utils.combineSegments([rootPath, path]), method));
             break;
           case HttpMethod.delete:
-            _deleteRoutes.add(new Route.fromRestClass(rootPath + path, method));
+            _deleteRoutes.add(new Route.fromRestClass(Utils.combineSegments([rootPath, path]), method));
             break;
           default:
         }
@@ -69,36 +78,37 @@ class Router {
   /**
    * Registers a get method
    */
-  void get(String path, Function callBack) {
-    _getRoutes.add(new Route(_path.path + path, (reflect(callBack) as ClosureMirror)));
+  void get(Function callBack, [String path]) {
+    _getRoutes.add(new Route(Utils.combineSegments([_path.path, path]), (reflect(callBack) as ClosureMirror)));
   }
 
   /**
    * Registers a put method
    */
-  void put(String path, Function callBack) {
-    _putRoutes.add(new Route(_path.path + path, (reflect(callBack) as ClosureMirror)));
+  void put(Function callBack, [String path]) {
+    _putRoutes.add(new Route(Utils.combineSegments([_path.path, path]), (reflect(callBack) as ClosureMirror)));
   }
 
   /**
    * Registers a post method
    */
-  void post(String path, Function callBack) {
-    _postRoutes.add(new Route(_path.path + path, (reflect(callBack) as ClosureMirror)));
+  void post(Function callBack, [String path]) {
+    _postRoutes.add(new Route(Utils.combineSegments([_path.path, path]), (reflect(callBack) as ClosureMirror)));
   }
 
   /**
    * Registers a delete method
    */
-  void delete(String path, Function callBack) {
-    _deleteRoutes.add(new Route(_path.path + path, (reflect(callBack) as ClosureMirror)));
+  void delete(Function callBack, [String path]) {
+    _deleteRoutes.add(new Route(Utils.combineSegments([_path.path, path]), (reflect(callBack) as ClosureMirror)));
   }
 
   /**
    * Creates a child router from the current router
    */
-  Router child(String path) {
-    Router childRouter = new Router(_path.path + path, this);
+  Router child([String path]) {
+    Router childRouter;
+    childRouter = new Router._withParent(this, Utils.combineSegments([_path.path, path]));
     this._childs.add(childRouter);
     return childRouter;
   }

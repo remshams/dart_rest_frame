@@ -38,7 +38,7 @@ void defineTests() {
       void toCall(HttpRequest request, @RequestBody() TestObject body) {
         expect(body, equals(reference));
       };
-      router.post("/test", toCall);
+      router.post(toCall, "/test");
       http.post("http://$host:$port/test", body: JSON.encode(reference)).then(expectAsync((response) {
         assert(response != null);
         expect(response.statusCode, HttpStatus.OK);
@@ -53,7 +53,7 @@ void defineTests() {
           expect(new TestObject.fromJson(JSON.decode(body)), equals(reference));
         }));
       };
-      router.post("/test", toCall);
+      router.post(toCall, "/test");
       http.post("http://$host:$port/test", body: JSON.encode(reference)).then(expectAsync((response) {
         assert(response != null);
         expect(response.statusCode, HttpStatus.OK);
@@ -66,7 +66,7 @@ void defineTests() {
       void toCall(HttpRequest request, @RequestBody() String body) {
           expect(new TestObject.fromJson(JSON.decode(body)), equals(reference));
       };
-      router.post("/test", toCall);
+      router.post(toCall, "/test");
       http.post("http://$host:$port/test", body: JSON.encode(reference)).then(expectAsync((response) {
         assert(response != null);
         expect(response.statusCode, HttpStatus.OK);
@@ -78,7 +78,7 @@ void defineTests() {
       void toCall(HttpRequest request, @RequestBody() String body) {
         expect(4, equals(int.parse(body)));
       };
-      router.post("/test", toCall);
+      router.post(toCall, "/test");
       http.post("http://$host:$port/test", body: JSON.encode(4)).then(expectAsync((response) {
         assert(response != null);
         expect(response.statusCode, HttpStatus.OK);
@@ -89,7 +89,7 @@ void defineTests() {
       void toCall(HttpRequest request, @RequestBody() String body) {
         assert(body.isEmpty);
       };
-      router.get("/test", toCall);
+      router.get(toCall, "/test");
       http.get("http://$host:$port/test").then(expectAsync((response) {
         assert(response != null);
         expect(response.statusCode, HttpStatus.OK);
@@ -100,7 +100,7 @@ void defineTests() {
       void toCall(HttpRequest request, @RequestBody() String body) {
         assert(body.isEmpty);
       };
-      router.delete("/test", toCall);
+      router.delete(toCall, "/test");
       http.delete("http://$host:$port/test").then(expectAsync((response) {
         assert(response != null);
         expect(response.statusCode, HttpStatus.OK);
@@ -111,7 +111,7 @@ void defineTests() {
       void toCall(HttpRequest request, @RequestBody() String body) {
         assert(body.isEmpty);
       };
-      router.post("/test", toCall);
+      router.post(toCall, "/test");
       http.post("http://$host:$port/test").then(expectAsync((response) {
         assert(response != null);
         expect(response.statusCode, HttpStatus.OK);

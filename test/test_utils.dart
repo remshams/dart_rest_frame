@@ -88,48 +88,48 @@ TestObject performGlobal(@RequestBody() TestObject object) {
 @RestResource("/")
 class RestClassAnnotations {
 
-  @RestMethod("test", HttpMethod.get)
+  @RestMethod(HttpMethod.get, "test")
   void testGet() {
 
   }
 
-  @RestMethod("testParams{?id}{?name}", HttpMethod.get)
+  @RestMethod(HttpMethod.get, "testParams{?id}{?name}")
   TestObject testGetWithParams(String id, String name) {
     return new TestObject(id, name);
   }
 
-  @RestMethod("{id}/testUrlParams", HttpMethod.get)
+  @RestMethod(HttpMethod.get, "{id}/testUrlParams")
   TestObject testGetWithUrlParams(String id) {
     return new TestObject(id, null);
   }
 
-  @RestMethod("{id}/testUrlAndPathParams{?name}", HttpMethod.get)
+  @RestMethod(HttpMethod.get, "{id}/testUrlAndPathParams{?name}")
   TestObject testGetWithUrlAndPathParams(String id, String name) {
     return new TestObject(id, name);
   }
 
-  @RestMethod("test", HttpMethod.post)
+  @RestMethod(HttpMethod.post, "test")
   TestObject testPost(@RequestBody() TestObject object) {
     return object;
   }
 
-  @RestMethod("test", HttpMethod.put)
+  @RestMethod(HttpMethod.put, "test")
   TestObject testPut(HttpRequest request, @RequestBody() TestObject object) {
     request.response.statusCode = HttpStatus.CREATED;
     return object;
   }
 
-  @RestMethod("test/{id}", HttpMethod.delete)
+  @RestMethod(HttpMethod.delete, "test/{id}")
   void testDelete(String id) {
 
   }
 
-  @RestMethod("testEmptyBody", HttpMethod.post)
+  @RestMethod(HttpMethod.post, "testEmptyBody")
   TestObject testEmptyBody(@RequestBody() TestObject body) {
     return body;
   }
 
-  @RestMethod("testNoRequestBodyType", HttpMethod.post)
+  @RestMethod(HttpMethod.post, "testNoRequestBodyType")
   void testNoRequestBodyType(@RequestBody() body) {
 
   }
@@ -139,41 +139,61 @@ class RestClassAnnotations {
 @RestResource("/paramAnnotation/")
 class RestClassParamAnnotation {
 
-  @RestMethod("testNoName", HttpMethod.get)
+  @RestMethod(HttpMethod.get, "testNoName")
   TestObject testNoName(@PathParam() String id) {
     return new TestObject(id, null);
   }
 
-  @RestMethod("testAnnotationAndString{?name}", HttpMethod.get)
+  @RestMethod(HttpMethod.get, "testAnnotationAndString{?name}")
   TestObject testAnnotationAndString(@PathParam() String id, @PathParam("nameAnnotation") String name) {
     return new TestObject(id, name);
   }
 
-  @RestMethod("testParamSameName", HttpMethod.get)
+  @RestMethod(HttpMethod.get, "testParamSameName")
   TestObject testParamSameName(@PathParam("id") String id) {
     return new TestObject(id, null);
   }
 
-  @RestMethod("testParamDifferentName", HttpMethod.get)
+  @RestMethod(HttpMethod.get, "testParamDifferentName")
   TestObject testParamDifferentName(@PathParam("myId") String idOfObject) {
     return new TestObject(idOfObject, null);
   }
 
-  @RestMethod("testParamNotProvided", HttpMethod.get)
+  @RestMethod(HttpMethod.get, "testParamNotProvided")
   TestObject testParamNotProvided(@PathParam("Id") String id) {
     return new TestObject(id, null);
   }
 
-  @RestMethod("testParamMixed", HttpMethod.post)
+  @RestMethod(HttpMethod.post, "testParamMixed")
   TestObject testParamMixed(@PathParam("id") String id, int value, @RequestBody() TestObject object) {
     object.id = id;
     object.value = value;
     return object;
   }
 
-  @RestMethod("testParamDuplicate", HttpMethod.get)
+  @RestMethod(HttpMethod.get, "testParamDuplicate")
   TestObject testParamDuplicate(@PathParam("id") @PathParam("id2") String id) {
     return new TestObject(id, null);
+  }
+
+}
+
+@RestResource()
+class RestResourceResourceNoPath {
+
+  @RestMethod(HttpMethod.get, "/testResourceNoPath")
+  void testResourceNoPath() {
+
+  }
+
+}
+
+@RestResource("testMethodNoPath")
+class RestResourceMethodNoPath {
+
+  @RestMethod(HttpMethod.get)
+  void testMethodNoPath() {
+
   }
 
 }

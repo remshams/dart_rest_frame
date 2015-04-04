@@ -11,14 +11,14 @@ class RequestBody {
 class RestResource {
   final String path;
 
-  const RestResource(this.path);
+  const RestResource([this.path]);
 }
 
 class RestMethod {
   final String path;
   final HttpMethod method;
 
-  const RestMethod(this.path, this.method);
+  const RestMethod(this.method, [this.path]);
 }
 
 class PathParam {
